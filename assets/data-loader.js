@@ -55,9 +55,20 @@
   function adaptar(g, meta) {
     var fueraSet = {};
     g.francos.fueraDeTurno.forEach(function (f) { fueraSet[f.practico.toUpperCase()] = f; });
+    // buque en el que figura cada práctico dentro de los bloques de viajes
+    var buqueDe = {};
+    Object.keys(g.viajes || {}).forEach(function (k) {
+      (g.viajes[k] || []).forEach(function (v) {
+        if (!v.buque) return;
+        [v.practico1, v.practico2].forEach(function (n) { if (n) buqueDe[String(n).toUpperCase()] = v.buque; });
+      });
+    });
     var turno = {
       practicos: g.turno.map(function (t) {
-        return { pos: t.pos, nombre: t.practico, cambio: t.marca === '*', destino: t.observacion || '',
+        var bq = buqueDe[String(t.practico).toUpperCase()];
+        var dest = t.observacion || '';
+        if (bq && t.estado === 'despachado_nuestro' && dest.toUpperCase().indexOf(bq.toUpperCase()) < 0) dest = bq;
+        return { pos: t.pos, nombre: t.practico, cambio: t.marca === '*', destino: dest,
                  detalle: 'Entró ' + dmh(t.entrada), tipo: fueraSet[t.practico.toUpperCase()] ? '⚠ Figura fuera de turno' : (ESTADO[t.estado] || '') };
       }),
       francos: g.francos.enFranco.map(function (f, i) {
