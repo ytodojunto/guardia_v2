@@ -431,6 +431,9 @@
       out.francos.enFranco.forEach(function (f) {
         if (enTurno[norm(f.practico)]) aviso('aviso', 'FRANCOS', 'C' + f.fila, 'franco_y_turno', f.practico + ' figura de franco y también en el turno.');
       });
+      out.francos.fueraDeTurno.forEach(function (f) {
+        if (enTurno[norm(f.practico)]) aviso('aviso', 'FRANCOS', 'C' + f.fila, 'fuera_de_turno_y_turno', f.practico + ' figura fuera de turno (enfermo/licencia) y también en la lista del turno' + (f.salida ? ' — fuera desde ' + f.salida.replace('T', ' ') : '') + '. Revisar cuál es el dato correcto.');
+      });
     }
 
     // ── programación: SUBIDAS / BAJADAS / CAMPANA ──

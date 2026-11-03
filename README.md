@@ -5,6 +5,7 @@ Independiente de la cuenta de Google de la empresa: el archivo se lee en el prop
 
 ## Cómo usarlo
 - `index.html` — tablero con el diseño de la guardia anterior. Pide usuario y contraseña (los de siempre) y lee el Excel desde Drive cada vez que se abre.
+- `proyeccion.html` — Proyección de guardia (panorama por día, prácticos libres y llamados, rotación, buques sin hora, estadísticas de terminales). Lee el Excel de Drive con el mismo lector; también acepta un Excel o PDF cargado a mano. Se abre desde la pestaña "Proyección" del tablero.
 - `lector.html` — lector simple: se elige un .xlsx del teléfono (sirve sin conexión con Drive).
 
 La contraseña de la página es la misma que se guarda en el Apps Script como `CLAVE_ACCESO`.

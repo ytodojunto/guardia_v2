@@ -53,10 +53,12 @@
   }
 
   function adaptar(g, meta) {
+    var fueraSet = {};
+    g.francos.fueraDeTurno.forEach(function (f) { fueraSet[f.practico.toUpperCase()] = f; });
     var turno = {
       practicos: g.turno.map(function (t) {
         return { pos: t.pos, nombre: t.practico, cambio: t.marca === '*', destino: t.observacion || '',
-                 detalle: 'Entró ' + dmh(t.entrada), tipo: ESTADO[t.estado] || '' };
+                 detalle: 'Entró ' + dmh(t.entrada), tipo: fueraSet[t.practico.toUpperCase()] ? '⚠ Figura fuera de turno' : (ESTADO[t.estado] || '') };
       }),
       francos: g.francos.enFranco.map(function (f, i) {
         return { nro: i + 1, nombre: f.practico, cambio: false, fechaSalida: dm(f.salida), horaSalida: hh(f.salida),
@@ -102,7 +104,7 @@
 
     var G = g.guardia;
     return { turno: turno, previstos: previstos, transitos: transitos, novedades: novedades, remises: remises,
-             avisos: g.avisos.filter(function (a) { return a.nivel === 'error'; }).map(function (a) { return a.hoja + (a.celda ? ' ' + a.celda : '') + ': ' + a.mensaje; }),
+             avisos: g.avisos.filter(function (a) { return a.nivel === 'error' || a.tipo === 'fuera_de_turno_y_turno' || a.tipo === 'franco_y_turno'; }).map(function (a) { return a.hoja + (a.celda ? ' ' + a.celda : '') + ': ' + a.mensaje; }),
              encabezado: 'Guardia ' + dmh(G.fechaInicio + 'T' + (G.horaInicio || '')) + ' → ' + dmh(G.fechaFin + 'T' + (G.horaFin || '')) + (meta ? ' · archivo guardado ' + meta : '') };
   }
 
