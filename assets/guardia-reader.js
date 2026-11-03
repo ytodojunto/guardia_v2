@@ -440,6 +440,26 @@
       out.francos.fueraDeTurno.forEach(function (f) {
         if (enTurno[norm(f.practico)]) aviso('aviso', 'FRANCOS', 'C' + f.fila, 'fuera_de_turno_y_turno', f.practico + ' figura fuera de turno (enfermo/licencia) y también en la lista del turno' + (f.salida ? ' — fuera desde ' + f.salida.replace('T', ' ') : '') + '. Revisar cuál es el dato correcto.');
       });
+      // turno vs viajes: destino del turno contra el buque donde el práctico figura cargado
+      var viajeDe = {};
+      Object.keys(out.viajes || {}).forEach(function (k) {
+        (out.viajes[k] || []).forEach(function (v) {
+          if (!v.buque) return;
+          [v.practico1, v.practico2].forEach(function (n) { if (n) viajeDe[norm(n)] = v; });
+        });
+      });
+      out.turno.forEach(function (t) {
+        var v = viajeDe[norm(t.practico)];
+        var obs = (t.observacion || '').toUpperCase();
+        if (t.estado === 'despachado_nuestro') {
+          if (v && obs.indexOf(String(v.buque).toUpperCase()) < 0)
+            aviso('aviso', 'TURNO', 'fila ' + t.fila, 'turno_viaje_distinto', t.practico + ': el turno dice "' + (t.observacion || '') + '" pero figura en el viaje de ' + v.buque + '.');
+          if (!v && obs && !/MEDICO|MÉDICO/.test(obs))
+            aviso('info', 'TURNO', 'fila ' + t.fila, 'despachado_sin_viaje', t.practico + ' figura despachado (' + t.observacion + ') pero no está cargado en ningún bloque de viajes.');
+        } else if (v) {
+          aviso('aviso', 'TURNO', 'fila ' + t.fila, 'viaje_sin_despacho', t.practico + ' está cargado en el viaje de ' + v.buque + ' pero en el turno no figura despachado.');
+        }
+      });
     }
 
     // ── programación: SUBIDAS / BAJADAS / CAMPANA ──
