@@ -52,6 +52,21 @@
              practicos: [v.practico1, v.practico2].filter(Boolean), datos: datos, observaciones: v.observaciones || '', ejemplo: v.ejemplo };
   }
 
+  // Notas de celda (las trae el Apps Script: [{hoja, celda, fila, texto}]). Se pegan al práctico / buque de esa fila.
+  function aplicarNotas(g, notas) {
+    (notas || []).forEach(function (n) {
+      var txt = String(n.texto || '').trim(); if (!txt) return;
+      var h = String(n.hoja || '').toUpperCase(), hit = false;
+      if (h === 'TURNO') {
+        g.turno.forEach(function (t) { if (t.fila === n.fila) { t.nota = (t.nota ? t.nota + ' · ' : '') + txt; hit = true; } });
+        Object.keys(g.viajes || {}).forEach(function (k) {
+          (g.viajes[k] || []).forEach(function (v) { if (v.fila === n.fila) { v.observaciones = (v.observaciones ? v.observaciones + ' · ' : '') + '📝 ' + txt; hit = true; } });
+        });
+      }
+      if (!hit) (g.novedades = g.novedades || []).push({ fecha: '', autor: 'Nota ' + n.hoja + ' ' + n.celda, texto: txt });
+    });
+  }
+
   function adaptar(g, meta) {
     var fueraSet = {};
     g.francos.fueraDeTurno.forEach(function (f) { fueraSet[f.practico.toUpperCase()] = f; });
@@ -69,7 +84,7 @@
         var dest = t.observacion || '';
         if (bq && t.estado === 'despachado_nuestro' && dest.toUpperCase().indexOf(bq.toUpperCase()) < 0) dest = bq;
         return { pos: t.pos, nombre: t.practico, cambio: t.marca === '*', destino: dest,
-                 detalle: 'Entró ' + dmh(t.entrada), tipo: fueraSet[t.practico.toUpperCase()] ? '⚠ Figura fuera de turno' : (ESTADO[t.estado] || '') };
+                 detalle: 'Entró ' + dmh(t.entrada) + (t.nota ? ' · 📝 ' + t.nota : ''), tipo: fueraSet[t.practico.toUpperCase()] ? '⚠ Figura fuera de turno' : (ESTADO[t.estado] || '') };
       }),
       francos: g.francos.enFranco.map(function (f, i) {
         return { nro: i + 1, nombre: f.practico, cambio: false, fechaSalida: dm(f.salida), horaSalida: hh(f.salida),
@@ -132,6 +147,7 @@
         return;
       }
       var g = await GuardiaReader.leerGuardia(ExcelJS, aBytes(d.xlsx), window.JSZip);
+      aplicarNotas(g, d.notas);
       var m = d.modificado ? new Date(d.modificado) : null;
       var data = adaptar(g, m ? m.toLocaleDateString('es-AR') + ' ' + m.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '');
       window.__guardia = { leida: g, vista: data };

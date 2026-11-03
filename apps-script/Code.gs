@@ -41,7 +41,12 @@ function doGet(e) {
     } else {
       blob = archivo.getBlob();
     }
+    var notas = [];
+    if (archivo.getMimeType() === TIPO_SHEET) {
+      try { notas = leerNotas(id); } catch (e2) { notas = []; }
+    }
     return salida({
+      notas: notas,
       nombre: archivo.getName(),
       modificado: archivo.getLastUpdated().toISOString(),
       consultado: new Date().toISOString(),
@@ -50,6 +55,22 @@ function doGet(e) {
   } catch (err) {
     return salida({ error: 'No pude abrir el archivo: ' + err.message });
   }
+}
+
+/** Notas de celda (el triangulito negro) de todas las hojas: [{hoja, celda, fila, texto}] */
+function leerNotas(id) {
+  var out = [];
+  SpreadsheetApp.openById(id).getSheets().forEach(function (hoja) {
+    var rango = hoja.getDataRange();
+    var notas = rango.getNotes();
+    var f0 = rango.getRow(), c0 = rango.getColumn();
+    for (var i = 0; i < notas.length; i++) {
+      for (var j = 0; j < notas[i].length; j++) {
+        if (notas[i][j]) out.push({ hoja: hoja.getName(), celda: hoja.getRange(f0 + i, c0 + j).getA1Notation(), fila: f0 + i, texto: notas[i][j] });
+      }
+    }
+  });
+  return out;
 }
 
 function salida(obj) {
