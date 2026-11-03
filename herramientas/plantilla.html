@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lector de guardia</title>
+<style>
+  :root { --bg:#f4f6f9; --card:#fff; --tx:#14213d; --mut:#5b6678; --line:#d9dee7; --az:#1f4f8b; --ok:#2e7d32; --warn:#b26a00; --err:#c62828; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1624; --card:#18223a; --tx:#eef2f8; --mut:#9fb0c8; --line:#2b3a58; --az:#7db2f0; --ok:#7bd88f; --warn:#ffc266; --err:#ff8a8a; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:18px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.5rem; margin:4px 0 12px; }
+  h2 { font-size:1.2rem; margin:22px 0 8px; color:var(--az); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:8px 0; }
+  .boton { display:block; width:100%; text-align:center; background:var(--az); color:#fff; font-weight:700; padding:16px; border-radius:12px; cursor:pointer; font-size:1.1rem; }
+  @media (prefers-color-scheme: dark) { .boton { color:#0b1220; } }
+  input[type=file] { display:none; }
+  .mut { color:var(--mut); font-size:.9rem; }
+  .fila { display:flex; gap:10px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--line); }
+  .fila:last-child { border-bottom:0; }
+  .n { min-width:2.2em; color:var(--mut); font-variant-numeric:tabular-nums; }
+  .nom { font-weight:600; flex:1; }
+  .tag { font-size:.78rem; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
+  .err { color:var(--err); } .aviso { color:var(--warn); } .info { color:var(--mut); }
+  details > summary { cursor:pointer; font-weight:600; padding:6px 0; }
+  .ej { opacity:.55; }
+  .estado { font-size:.9rem; color:var(--mut); margin:8px 0; }
+  .clave { display:flex; gap:8px; margin:8px 0; } .clave input { flex:1; font-size:1rem; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--tx); }
+  .clave button { padding:12px 16px; border-radius:10px; border:0; background:var(--az); color:#fff; font-weight:700; }
+  button.sec { background:transparent; color:var(--az); border:2px solid var(--az); border-radius:12px; padding:12px; font-size:1rem; font-weight:700; width:100%; margin-top:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Lector de guardia</h1>
+  <div id="vivo" hidden>
+    <button class="boton" id="actualizar" type="button" style="border:0;width:100%">Actualizar desde Drive</button>
+    <div class="clave" id="pedirClave" hidden><input id="clave" type="password" placeholder="Clave de acceso" autocomplete="current-password"><button id="entrar" type="button">Entrar</button></div>
+    <div class="estado" id="estado"></div>
+    <p class="mut">O elegí un archivo del teléfono:</p>
+  </div>
+  <label class="boton" for="archivo" id="botonArchivo">Elegir el Excel de la guardia (.xlsx)</label>
+  <input id="archivo" type="file" accept=".xlsx">
+  <p class="mut">Se lee en este teléfono o computadora. El archivo no se sube a ningún lado.</p>
+  <div id="salida"></div>
+</main>
+
+<script src="assets/config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/*__LECTOR__*/
+</script>
+<script>
+(function () {
+  var salida = document.getElementById('salida'), ultimo = null;
+
+  function h(tag, attrs, hijos) {
+    var e = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) { if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); });
+    [].concat(hijos == null ? [] : hijos).forEach(function (c) { e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function cuando(iso) { if (!iso) return ''; var m = iso.match(/^\d{4}-(\d\d)-(\d\d)(?:T(\d\d:\d\d))?/); return m ? m[2] + '/' + m[1] + (m[3] ? ' ' + m[3] : '') : iso; }
+  function fh(o) { if (!o || !o.fecha) return '?'; var f = o.fecha.slice(8) + '/' + o.fecha.slice(5, 7); return f + ' ' + (o.hora || o.franja || ''); }
+  function pto(p) { return p ? (p.puerto || p.raw) + (p.cuando ? ' ' + cuando(p.cuando) : '') : ''; }
+  function tag(t) { return t ? h('span', { class: 'tag' }, t.replace(/_/g, ' ')) : ''; }
+  function seccion(titulo) { salida.appendChild(h('h2', {}, titulo)); }
+
+  function mostrar(d) {
+    salida.innerHTML = '';
+    var g = d.guardia || {};
+    seccion('Guardia');
+    salida.appendChild(h('div', { class: 'card' }, [
+      h('div', {}, cuando(g.fechaInicio + 'T' + (g.horaInicio || '')) + '  →  ' + cuando(g.fechaFin + 'T' + (g.horaFin || ''))),
+      h('div', { class: 'mut' }, 'Operador: ' + (g.operador || '?') + ' · Coordinador: ' + (g.coordinador || '?'))
+    ]));
+
+    var errs = d.avisos.filter(function (a) { return a.nivel === 'error'; }).length;
+    var avs = d.avisos.filter(function (a) { return a.nivel === 'aviso'; }).length;
+    seccion('Avisos (' + errs + ' errores, ' + avs + ' avisos)');
+    var det = h('details', { class: 'card' }, h('summary', {}, d.avisos.length ? 'Ver detalle' : 'Todo en orden'));
+    if (errs) det.setAttribute('open', '');
+    d.avisos.forEach(function (a) {
+      det.appendChild(h('div', { class: 'fila' }, [h('span', { class: a.nivel }, a.hoja + (a.celda ? ' ' + a.celda : '')), h('span', {}, a.mensaje)]));
+    });
+    salida.appendChild(det);
+
+    seccion('Listado en turno (' + d.turno.length + ')');
+    var cT = h('div', { class: 'card' });
+    d.turno.forEach(function (t) {
+      cT.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'n' }, String(t.pos)), h('span', { class: 'nom' }, (t.marca ? t.marca + ' ' : '') + t.practico), h('span', { class: 'mut' }, 'entró ' + cuando(t.entrada)), tag(t.estado)]));
+    });
+    if (!d.turno.length) cT.appendChild(h('div', { class: 'mut' }, 'Sin prácticos en la lista.'));
+    salida.appendChild(cT);
+
+    if (d.guardiaRosario.length) {
+      seccion('Guardia Rosario (' + d.guardiaRosario.length + ')');
+      var cR = h('div', { class: 'card' });
+      d.guardiaRosario.forEach(function (t) { cR.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'nom' }, (t.marca ? t.marca + ' ' : '') + t.practico), h('span', { class: 'mut' }, 'entró ' + cuando(t.entrada))])); });
+      salida.appendChild(cR);
+    }
+
+    var NOM = { aRosario: 'En viaje a Rosario', deRosario: 'En viaje de Rosario', aCampana: 'En viaje a Campana', deCampana: 'En viaje de Campana', movimientos: 'Movimientos' };
+    Object.keys(NOM).forEach(function (k) {
+      var v = d.viajes[k]; seccion(NOM[k] + ' (' + v.length + ')');
+      var c = h('div', { class: 'card' });
+      v.forEach(function (x) {
+        c.appendChild(h('div', { class: 'fila' + (x.ejemplo ? ' ej' : '') }, [
+          h('div', { style: 'flex:1' }, [
+            h('div', { class: 'nom' }, (x.servicio || '') + ' ' + (x.buque || '') + (x.ejemplo ? ' (ejemplo)' : '')),
+            h('div', {}, [x.practico1, x.practico2].filter(Boolean).join(' / ') + (x.calado ? ' · ' + x.calado + ' m' : '') + (x.canal ? ' · ' + x.canal : '')),
+            h('div', { class: 'mut' }, 'Inicio ' + pto(x.inicio) + (x.desembarco1 ? ' · D1 ' + pto(x.desembarco1) : '') + (x.desembarco2 ? ' · D2 ' + pto(x.desembarco2) : ''))
+          ]), tag(x.colores.calado)
+        ]));
+      });
+      if (!v.length) c.appendChild(h('div', { class: 'mut' }, 'Sin buques.'));
+      salida.appendChild(c);
+    });
+
+    var PROG = { subidas: 'Subidas', bajadas: 'Bajadas', campana: 'Campana' };
+    Object.keys(PROG).forEach(function (k) {
+      var p = d.programacion[k]; if (!p) return;
+      seccion('Programación ' + PROG[k] + ' (' + p.buques.length + ')');
+      var c = h('div', { class: 'card' });
+      c.appendChild(h('div', { class: 'mut' }, 'Publicada ' + cuando(p.publicado) + ' · coef. promedio ' + (p.coefPromedio == null ? '—' : p.coefPromedio)));
+      p.buques.forEach(function (b) {
+        c.appendChild(h('div', { class: 'fila' }, [
+          h('span', { class: 'n' }, b.marca || ''),
+          h('div', { style: 'flex:1' }, [
+            h('div', { class: 'nom' }, b.buque + ' · ' + b.servicio),
+            h('div', { class: 'mut' }, (b.desde || '?') + ' → ' + (b.hasta || '?') + ' · recalada ' + fh(b.recalada) + (b.eta && b.eta.fecha ? ' · ETD/conf. ' + fh(b.eta) : '') + (b.autorizado ? ' · aut. ' + b.autorizado : ''))
+          ]), tag(b.estado)
+        ]));
+      });
+      salida.appendChild(c);
+    });
+
+    seccion('Francos (' + d.francos.enFranco.length + ')');
+    var cF = h('div', { class: 'card' });
+    d.francos.enFranco.forEach(function (f) { cF.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'nom' }, f.practico), h('span', { class: 'mut' }, 'vuelve ' + cuando(f.ingreso))])); });
+    d.francos.fueraDeTurno.forEach(function (f) { cF.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'nom' }, f.practico + ' (fuera de turno)'), h('span', { class: 'mut' }, f.observacion || '')])); });
+    salida.appendChild(cF);
+
+    var b = h('button', { class: 'sec', type: 'button' }, 'Descargar lectura (JSON)');
+    b.onclick = function () {
+      var url = URL.createObjectURL(new Blob([JSON.stringify(ultimo, null, 1)], { type: 'application/json' }));
+      var a = h('a', { href: url, download: 'guardia-leida.json' }); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    };
+    salida.appendChild(b);
+  }
+
+  function leerLocal(k, v) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function guardarLocal(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function aBytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  function error(msg) { salida.innerHTML = ''; salida.appendChild(h('div', { class: 'card err' }, msg)); }
+  function cuandoLocal(iso) { var d = new Date(iso); return d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); }
+
+  async function procesar(buf, nombre) {
+    ultimo = await GuardiaReader.leerGuardia(ExcelJS, buf);
+    mostrar(ultimo);
+  }
+
+  document.getElementById('archivo').addEventListener('change', async function (ev) {
+    var f = ev.target.files[0]; if (!f) return;
+    salida.innerHTML = ''; salida.appendChild(h('p', { class: 'mut' }, 'Leyendo ' + f.name + '…'));
+    try { await procesar(await f.arrayBuffer(), f.name); }
+    catch (e) { error('No pude leer el archivo: ' + (e && e.message ? e.message : e)); }
+  });
+
+  // ── lectura en vivo desde Drive (Apps Script) ──
+  var API = window.GUARDIA_API_URL;
+  if (API) {
+    var vivo = document.getElementById('vivo'), estado = document.getElementById('estado'), pedir = document.getElementById('pedirClave');
+    var inputClave = document.getElementById('clave');
+    vivo.hidden = false;
+    document.getElementById('botonArchivo').style.background = 'transparent';
+    document.getElementById('botonArchivo').style.color = 'var(--az)';
+    document.getElementById('botonArchivo').style.border = '2px solid var(--az)';
+
+    async function traer() {
+      var clave = leerLocal('mp_clave');
+      if (!clave) { pedir.hidden = false; estado.textContent = 'Escribí la clave para leer la guardia.'; return; }
+      pedir.hidden = true; estado.textContent = 'Leyendo desde Drive…';
+      try {
+        var r = await fetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'clave=' + encodeURIComponent(clave), { cache: 'no-store' });
+        var d = await r.json();
+        if (d.error) {
+          if (/autorizado/i.test(d.error)) { guardarLocal('mp_clave', ''); pedir.hidden = false; estado.textContent = 'Clave incorrecta.'; return; }
+          throw new Error(d.error);
+        }
+        await procesar(aBytes(d.xlsx), d.nombre);
+        estado.textContent = d.nombre + ' · guardado en Drive ' + cuandoLocal(d.modificado) + ' · leído ' + cuandoLocal(d.consultado);
+      } catch (e) {
+        estado.textContent = '';
+        error('No pude leer desde Drive: ' + (e && e.message ? e.message : e) + '. Podés elegir el archivo a mano.');
+      }
+    }
+    document.getElementById('entrar').addEventListener('click', function () { guardarLocal('mp_clave', inputClave.value); traer(); });
+    inputClave.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { guardarLocal('mp_clave', inputClave.value); traer(); } });
+    document.getElementById('actualizar').addEventListener('click', traer);
+    traer();   // al abrir la página, lee solo
+  }
+})();
+</script>
+</body>
+</html>
