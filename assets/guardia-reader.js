@@ -365,6 +365,12 @@
           if (sv.v == null && bq.v == null) continue;
           var servicio = sv.v == null ? null : String(sv.v).replace(/\.0$/, '');
           var p1 = texto(leer(r2, h.f['PRACTICO 1'])), p2 = texto(leer(r2, h.f['PRACTICO 2']));
+          if (bq.v == null && !p1 && !p2) {
+            aviso('info', 'TURNO', 'fila ' + r2, 'fila_sin_buque', 'La fila tiene número de servicio (' + servicio + ') pero no buque ni prácticos: se ignora (restos de una fila anterior).');
+            continue;
+          }
+          if (bq.v != null && servicio == null)
+            aviso('aviso', 'TURNO', 'fila ' + r2, 'sin_servicio', 'Falta el número de servicio de ' + limpio(bq.v) + ': sin él no se cruza con la programación.');
           [p1, p2].forEach(function (p) { if (p && !esPropio(p)) aviso('info', 'TURNO', 'fila ' + r2, 'cobertura', p + ' no es de MULTIPAR (cobertura) — buque ' + (bq.v || servicio)); });
           var cal = h.f['CALADO'] ? leer(r2, h.f['CALADO']) : { v: null }, calado = null;
           if (cal.v != null) {
