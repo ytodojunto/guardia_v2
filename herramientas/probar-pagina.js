@@ -1,5 +1,5 @@
 const {JSDOM}=require('jsdom'),fs=require('fs');
-const html=fs.readFileSync('../index.html','utf8').replace(/<script src="[^"]+"><\/script>/g,'');
+const html=fs.readFileSync('../lector.html','utf8').replace(/<script src="[^"]+"><\/script>/g,'');
 const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true});
 const w=dom.window; w.ExcelJS=require('exceljs'); w.JSZip=require('jszip');
 const buf=fs.readFileSync(process.argv[2]);

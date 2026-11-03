@@ -1,771 +1,762 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lector de guardia</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MULTIPAR S.A. — Guardia</title>
 <style>
-  :root { --bg:#f4f6f9; --card:#fff; --tx:#14213d; --mut:#5b6678; --line:#d9dee7; --az:#1f4f8b; --ok:#2e7d32; --warn:#b26a00; --err:#c62828; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#0f1624; --card:#18223a; --tx:#eef2f8; --mut:#9fb0c8; --line:#2b3a58; --az:#7db2f0; --ok:#7bd88f; --warn:#ffc266; --err:#ff8a8a; } }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--tx); font:18px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  main { max-width:760px; margin:0 auto; padding:16px; }
-  h1 { font-size:1.5rem; margin:4px 0 12px; }
-  h2 { font-size:1.2rem; margin:22px 0 8px; color:var(--az); }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:8px 0; }
-  .boton { display:block; width:100%; text-align:center; background:var(--az); color:#fff; font-weight:700; padding:16px; border-radius:12px; cursor:pointer; font-size:1.1rem; }
-  @media (prefers-color-scheme: dark) { .boton { color:#0b1220; } }
-  input[type=file] { display:none; }
-  .mut { color:var(--mut); font-size:.9rem; }
-  .fila { display:flex; gap:10px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--line); }
-  .fila:last-child { border-bottom:0; }
-  .n { min-width:2.2em; color:var(--mut); font-variant-numeric:tabular-nums; }
-  .nom { font-weight:600; flex:1; }
-  .tag { font-size:.78rem; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
-  .err { color:var(--err); } .aviso { color:var(--warn); } .info { color:var(--mut); }
-  details > summary { cursor:pointer; font-weight:600; padding:6px 0; }
-  .ej { opacity:.55; }
-  .estado { font-size:.9rem; color:var(--mut); margin:8px 0; }
-  .clave { display:flex; gap:8px; margin:8px 0; } .clave input { flex:1; font-size:1rem; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--tx); }
-  .clave button { padding:12px 16px; border-radius:10px; border:0; background:var(--az); color:#fff; font-weight:700; }
-  button.sec { background:transparent; color:var(--az); border:2px solid var(--az); border-radius:12px; padding:12px; font-size:1rem; font-weight:700; width:100%; margin-top:14px; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --azul:#1a3366;--azul2:#2b5797;--azul3:#4a7fc1;
+  --verde:#1a7f4b;--verde2:#e6f5ec;
+  --rojo:#991b1b;--rojo2:#fde8e8;
+  --naranja:#b45309;--naranja2:#fff3cd;
+  --gris:#f4f6f9;--gris2:#e8ecf0;--gris3:#6b7280;
+  --borde:rgba(0,0,0,0.09);--radio:10px;
+}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;background:#eef1f6;color:#1a1a2e;max-width:430px;margin:0 auto;padding-bottom:80px}
+
+/* LOGIN OVERLAY */
+.login-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a3366,#0d1a33);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-overlay.oculto{display:none}
+.login-box{background:#fff;border-radius:14px;padding:28px 24px;width:100%;max-width:320px;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+.login-logo{text-align:center;font-size:28px;margin-bottom:6px}
+.login-title{text-align:center;font-size:15px;font-weight:700;color:#1a3366;margin-bottom:2px}
+.login-sub{text-align:center;font-size:11px;color:#6b7280;margin-bottom:20px}
+.login-field{margin-bottom:12px}
+.login-field label{display:block;font-size:11px;color:#6b7280;margin-bottom:4px;font-weight:500}
+.login-field input{width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;outline:none}
+.login-field input:focus{border-color:#2b5797}
+.login-btn{width:100%;background:#1a3366;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px}
+.login-btn:active{background:#0d1a33}
+.login-error{color:#991b1b;font-size:11px;text-align:center;margin-top:10px;display:none}
+
+/* HEADER */
+.app-header{background:var(--azul);padding:10px 14px 8px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+.hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.logo-box{background:#fff;border-radius:6px;padding:3px 8px;display:flex;align-items:center;gap:6px}
+.logo-text{font-size:12px;font-weight:700;color:var(--azul)}
+.logo-sub{font-size:7px;color:var(--azul3);font-weight:500;letter-spacing:.5px}
+.hdr-info{flex:1}
+.hdr-coord{color:rgba(255,255,255,0.9);font-size:11px;font-weight:500}
+.hdr-op{color:rgba(255,255,255,0.6);font-size:10px}
+.hdr-meta{display:flex;align-items:center;justify-content:space-between}
+.hdr-fecha{color:rgba(255,255,255,0.7);font-size:10px}
+.hdr-despachos{background:rgba(255,255,255,0.12);border-radius:6px;padding:2px 8px;color:#fff;font-size:10px}
+.theme-toggle{background:rgba(255,255,255,0.12);border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+.theme-toggle:active{background:rgba(255,255,255,0.25)}
+.hdr-despachos strong{font-size:12px}
+
+/* SEARCH BAR GLOBAL */
+.search-global{background:rgba(255,255,255,0.12);border-radius:8px;margin:6px 0 2px;display:flex;align-items:center;gap:6px;padding:5px 10px}
+.search-global input{background:none;border:none;outline:none;color:#fff;font-size:12px;flex:1;width:100%}
+.search-global input::placeholder{color:rgba(255,255,255,0.5)}
+.search-global span{color:rgba(255,255,255,0.6);font-size:14px}
+.search-clear{color:rgba(255,255,255,0.5);cursor:pointer;font-size:16px;display:none}
+
+/* NAV TABS */
+.nav-tabs-wrap{display:flex;align-items:stretch;background:var(--azul);border-top:1px solid rgba(255,255,255,0.1)}
+.nav-tabs{display:flex;flex:1;background:transparent;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth}
+.nav-arrow{display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;color:rgba(255,255,255,0.7);font-size:16px;cursor:pointer;user-select:none}
+.nav-arrow:active{color:#fff}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{flex:0 0 auto;padding:7px 14px;color:rgba(255,255,255,0.6);font-size:11px;font-weight:500;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s}
+.nav-tab.active{color:#fff;border-bottom-color:#5b9bd5;background:rgba(255,255,255,0.05)}
+
+/* SECTIONS */
+.section{display:none;padding:10px 10px 0}
+.section.active{display:block}
+
+/* FILTER BAR */
+.filter-bar{background:#fff;border-radius:8px;border:0.5px solid var(--borde);margin-bottom:8px;overflow:hidden}
+.filter-row{display:flex;align-items:center;gap:0;overflow-x:auto;scrollbar-width:none;padding:6px 8px;gap:6px}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-btn{flex:0 0 auto;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--borde);background:var(--gris);color:var(--gris3);transition:all .15s;white-space:nowrap}
+.filter-btn.active{background:var(--azul);color:#fff;border-color:var(--azul)}
+.filter-btn.verde.active{background:var(--verde);border-color:var(--verde)}
+.filter-btn.naranja.active{background:var(--naranja);border-color:var(--naranja)}
+.filter-btn.rojo.active{background:var(--rojo);border-color:var(--rojo)}
+.filter-search{display:flex;align-items:center;gap:6px;padding:4px 8px 6px;border-top:0.5px solid var(--borde)}
+.filter-search input{flex:1;border:none;outline:none;font-size:12px;color:#1a1a2e;background:var(--gris);border-radius:6px;padding:5px 8px}
+.filter-search input::placeholder{color:var(--gris3)}
+.filter-search span{font-size:12px;color:var(--gris3)}
+
+/* SORT BAR */
+.sort-bar{display:flex;align-items:center;gap:6px;padding:4px 8px 6px;border-top:0.5px solid var(--borde)}
+.sort-label{font-size:10px;color:var(--gris3);white-space:nowrap}
+.sort-btn{flex:0 0 auto;padding:3px 8px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid var(--borde);background:var(--gris);color:var(--gris3);transition:all .15s;white-space:nowrap}
+.sort-btn.active{background:var(--azul2);color:#fff;border-color:var(--azul2)}
+
+/* STATS ROW */
+.stats-row{display:flex;gap:6px;margin-bottom:8px}
+.stat-box{flex:1;background:#fff;border-radius:8px;border:0.5px solid var(--borde);padding:7px 10px;text-align:center}
+.stat-num{font-size:20px;font-weight:700}
+.stat-num.verde{color:var(--verde)}.stat-num.naranja{color:var(--naranja)}.stat-num.rojo{color:var(--rojo)}.stat-num.azul{color:var(--azul2)}
+.stat-label{font-size:9px;color:var(--gris3);margin-top:1px}
+
+/* CARD */
+.card{background:#fff;border-radius:var(--radio);border:0.5px solid var(--borde);margin-bottom:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.card-head{display:flex;align-items:center;gap:7px;padding:9px 12px;border-bottom:0.5px solid var(--borde);background:#fafbfc}
+.card-head-title{font-size:12px;font-weight:600;flex:1;color:var(--azul)}
+.card-head-count{background:var(--gris2);border-radius:20px;padding:1px 8px;font-size:10px;font-weight:500;color:var(--gris3)}
+
+/* PRACTICO ROW */
+.prac-row{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-bottom:0.5px solid var(--borde);transition:background .1s}
+.prac-row:last-child{border-bottom:none}
+.prac-row.hidden{display:none}
+.prac-num{width:24px;height:24px;border-radius:50%;background:var(--azul);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.prac-num.cambio{background:var(--naranja)}
+.prac-info{flex:1;min-width:0}
+.prac-nombre{font-size:13px;font-weight:600}
+.prac-nombre.cambio{color:var(--naranja)}
+.prac-detalle{font-size:10.5px;color:var(--gris3);margin-top:1px}
+.prac-obs{font-size:10.5px;margin-top:3px;font-weight:500;color:var(--naranja)}
+.prac-badge{font-size:10px;color:#fff;border-radius:5px;padding:3px 7px;white-space:nowrap;flex-shrink:0;align-self:center;font-weight:600;background:var(--azul2)}
+
+/* FRANCO ROW */
+.franco-row{padding:9px 12px;border-bottom:0.5px solid var(--borde);transition:background .1s}
+.franco-row:last-child{border-bottom:none}
+.franco-row.hidden{display:none}
+.franco-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.franco-num{width:20px;height:20px;border-radius:50%;background:var(--gris2);color:var(--gris3);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.franco-nombre{font-size:12.5px;font-weight:600;flex:1}
+.franco-fechas{font-size:10px;color:var(--gris3);padding-left:26px;display:flex;gap:10px;flex-wrap:wrap}
+.franco-obs{font-size:10px;color:var(--naranja);padding-left:26px;margin-top:3px;font-weight:500}
+
+/* VARIOS ROW */
+.varios-row{padding:9px 12px;border-bottom:0.5px solid var(--borde);display:flex;align-items:flex-start;gap:8px}
+.varios-row:last-child{border-bottom:none}
+.varios-row.hidden{display:none}
+.varios-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.varios-nombre{font-size:12.5px;font-weight:600}
+.varios-detalle{font-size:10px;color:var(--gris3);margin-top:2px}
+
+/* SEC LABEL */
+.sec-label{font-size:10px;font-weight:600;color:var(--gris3);text-transform:uppercase;letter-spacing:.06em;padding:6px 12px 4px;background:#fafbfc;border-top:0.5px solid var(--borde);border-bottom:0.5px solid var(--borde)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
+.b-naranja{background:var(--naranja2);color:var(--naranja)}
+.b-azul{background:#e8f0fb;color:var(--azul2)}
+.b-verde{background:var(--verde2);color:var(--verde)}
+.b-gris{background:var(--gris2);color:var(--gris3)}
+
+/* DIV TITLE */
+.div-title{font-size:11px;font-weight:700;color:var(--azul);padding:10px 0 5px;display:flex;align-items:center;gap:6px}
+.div-title::after{content:'';flex:1;height:1px;background:var(--azul2);opacity:.2}
+
+/* DESPACHO CARD */
+.desp-card{border-radius:var(--radio);margin-bottom:8px;overflow:hidden;border:0.5px solid var(--borde);box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.desp-card.hidden{display:none}
+.desp-head{padding:10px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.desp-head.subida{background:#e6f5ec;border-bottom:2px solid var(--verde)}
+.desp-head.bajada{background:#e8f0fb;border-bottom:2px solid var(--azul2)}
+.desp-head.movimiento{background:var(--naranja2);border-bottom:2px solid var(--naranja)}
+.desp-buque{font-size:14px;font-weight:700}
+.desp-meta{font-size:10px;color:var(--gris3);margin-top:2px}
+.desp-body{background:#fff;padding:10px 12px}
+.desp-practicos{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.prac-chip{display:flex;align-items:center;gap:6px;background:var(--gris);border-radius:7px;padding:5px 8px}
+.chip-pos{width:20px;height:20px;border-radius:50%;background:var(--azul);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chip-nombre{font-size:12px;font-weight:500;flex:1}
+.chip-empresa{font-size:10px;color:var(--gris3)}
+.chip-icon{font-size:14px}
+.desp-datos{border-top:0.5px solid var(--borde);padding-top:8px;display:flex;flex-direction:column;gap:5px}
+.dato-row{display:flex;gap:6px}
+.dato-label{font-size:10px;color:var(--gris3);width:90px;flex-shrink:0;padding-top:1px}
+.dato-val{font-size:11.5px;font-weight:500;flex:1}
+
+/* BUQUE PREVISTO */
+.buque-row{background:#fff;border-radius:8px;margin-bottom:7px;border:0.5px solid var(--borde);border-left:3px solid var(--gris2);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.buque-row.hidden{display:none}
+.buque-row.posible{border-left-color:var(--naranja)}
+.buque-row.autorizado{border-left-color:var(--verde)}
+.buque-top{display:flex;align-items:center;gap:8px;padding:9px 12px}
+.buque-nombre{font-size:13px;font-weight:700;flex:1}
+.buque-cf{background:var(--azul);color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700}
+.buque-bottom{padding:0 12px 8px;display:flex;gap:10px;flex-wrap:wrap}
+.buque-dato{font-size:10px;color:var(--gris3);display:flex;flex-direction:column;gap:1px}
+.buque-dato strong{font-size:11px;color:#1a1a2e;font-weight:600}
+.buque-obs{padding:6px 12px 8px;font-size:10.5px;color:#374151;border-top:0.5px dashed var(--borde);line-height:1.5}
+.buque-tilde{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--borde);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gris3);font-size:14px;cursor:pointer;transition:all .2s;user-select:none}
+.buque-tilde.ok{border-color:var(--verde);background:var(--verde2);color:var(--verde)}
+
+/* OBS */
+.obs-item{padding:10px 12px;border-bottom:0.5px solid var(--borde)}
+.obs-item:last-child{border-bottom:none}
+.obs-item.hidden{display:none}
+.obs-tag{display:inline-block;font-size:9.5px;font-weight:600;padding:2px 8px;border-radius:10px;margin-bottom:4px}
+.tag-rojo{background:var(--rojo2);color:var(--rojo)}
+.tag-naranja{background:var(--naranja2);color:var(--naranja)}
+.tag-azul{background:#e8f0fb;color:var(--azul2)}
+.tag-verde{background:var(--verde2);color:var(--verde)}
+.obs-texto{font-size:11.5px;color:#374151;line-height:1.6}
+.obs-fecha{font-size:10px;color:var(--gris3);margin-top:3px}
+
+/* DETERMINANTES */
+.det-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid var(--borde)}
+.det-row:last-child{border-bottom:none}
+.det-label{font-size:11.5px;color:#374151}
+.det-km{font-size:10px;color:var(--gris3);margin-left:4px}
+.det-val{font-size:14px;font-weight:700}
+.det-ok{color:var(--verde)}.det-warn{color:var(--naranja)}.det-crit{color:var(--rojo)}
+
+/* LINKS */
+.link-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:0.5px solid var(--borde);text-decoration:none;color:inherit}
+.link-row:last-child{border-bottom:none}
+.link-icon{width:32px;height:32px;border-radius:8px;background:var(--azul);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.link-text{flex:1}
+.link-title{font-size:12.5px;font-weight:600}
+.link-url{font-size:10px;color:var(--azul3);margin-top:1px}
+
+/* TEL */
+.tel-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:0.5px solid var(--borde)}
+.tel-row:last-child{border-bottom:none}
+.tel-puerto{font-size:12px;font-weight:500;flex:1}
+.tel-num{font-size:11.5px;color:var(--azul2);text-decoration:none;font-weight:500}
+
+/* EMPTY */
+.empty{padding:14px 12px;text-align:center;font-size:11.5px;color:var(--gris3);font-style:italic}
+
+/* LOADING STATE */
+.loading-skel{padding:26px 12px;text-align:center;color:var(--gris3);font-size:12px}
+.loading-skel .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--azul3);margin:0 3px;animation:loadPulse 1.4s ease-in-out infinite}
+.loading-skel .dot:nth-child(2){animation-delay:.2s}
+.loading-skel .dot:nth-child(3){animation-delay:.4s}
+.loading-skel .txt{display:block;margin-top:8px}
+@keyframes loadPulse{0%,80%,100%{opacity:.25;transform:scale(.75)}40%{opacity:1;transform:scale(1)}}
+.loading-banner{background:#fff3cd;color:#7a5c00;font-size:11.5px;text-align:center;padding:6px 10px;font-weight:500}
+.loading-banner.oculto{display:none}
+.loading-banner.error{background:var(--rojo2);color:var(--rojo)}
+
+/* LEYENDA */
+.leyenda{display:flex;gap:10px;flex-wrap:wrap;padding:8px 12px;font-size:10px;background:#fafbfc;border-bottom:0.5px solid var(--borde)}
+.ley-item{display:flex;align-items:center;gap:4px;color:var(--gris3)}
+
+/* HIGHLIGHT */
+mark{background:#fff3cd;border-radius:2px;padding:0 1px}
+
+/* MODO NOCTURNO */
+html[data-theme="dark"]{
+  --gris:#161a22;--gris2:#232936;--gris3:#8b96a8;
+  --borde:rgba(255,255,255,0.09);
+  --verde2:#123322;--rojo2:#3a1a1a;--naranja2:#3a2e10;
+}
+html[data-theme="dark"] body{background:#0e1117;color:#e7eaf0}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .desp-body,
+html[data-theme="dark"] .login-box{background:#1a1f2a;color:#e7eaf0}
+html[data-theme="dark"] .login-title{color:#dfe6f5}
+html[data-theme="dark"] .login-sub,
+html[data-theme="dark"] .franco-fechas,
+html[data-theme="dark"] .obs-texto,
+html[data-theme="dark"] .det-label{color:#9aa4b5}
+html[data-theme="dark"] .login-field input{background:#232936;border-color:#333c4d;color:#e7eaf0}
+html[data-theme="dark"] .buque-dato strong{color:#e7eaf0}
+html[data-theme="dark"] .leyenda{background:#161a22;border-color:rgba(255,255,255,0.09)}
+html[data-theme="dark"] .empty{color:#7c8698}
+html[data-theme="dark"] .filter-bar,
+html[data-theme="dark"] .sort-bar{background:#1a1f2a}
+html[data-theme="dark"] .nav-tabs-wrap{background:#0e1117}
+html[data-theme="dark"] .loading-banner{background:#3a2e10;color:#f2d27a}
+html[data-theme="dark"] .loading-banner.error{background:#3a1a1a;color:#f5a3a3}
+html[data-theme="dark"] mark{background:#5a4a10;color:#fff}
+/* Nombres de buque: en Buques, los encabezados subida/bajada/movimiento
+   siguen usando fondos claros aun en modo oscuro (así se mantiene el
+   código de color), así que el texto sobre ellos se fuerza a oscuro para
+   que no herede el texto claro del body. En Previstos, la tarjeta blanca
+   pasa a un fondo oscuro y el nombre se fuerza a texto claro. */
+html[data-theme="dark"] .desp-buque{color:#14181f}
+html[data-theme="dark"] .desp-head .desp-meta{color:#3a4150}
+html[data-theme="dark"] .buque-row{background:#1a1f2a;box-shadow:none}
+html[data-theme="dark"] .buque-nombre{color:#e7eaf0}
+html[data-theme="dark"] .buque-obs{color:#c3c9d4;border-top-color:#333c4d}
 </style>
 </head>
 <body>
-<main>
-  <h1>Lector de guardia</h1>
-  <div id="vivo" hidden>
-    <button class="boton" id="actualizar" type="button" style="border:0;width:100%">Actualizar desde Drive</button>
-    <div class="clave" id="pedirClave" hidden><input id="clave" type="password" placeholder="Clave de acceso" autocomplete="current-password"><button id="entrar" type="button">Entrar</button></div>
-    <div class="estado" id="estado"></div>
-    <p class="mut">O elegí un archivo del teléfono:</p>
-  </div>
-  <label class="boton" for="archivo" id="botonArchivo">Elegir el Excel de la guardia (.xlsx)</label>
-  <input id="archivo" type="file" accept=".xlsx">
-  <p class="mut">Se lee en este teléfono o computadora. El archivo no se sube a ningún lado.</p>
-  <div id="salida"></div>
-</main>
 
-<script src="assets/config.js"></script>
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo"><img src="logo-multipar.png" alt="Multipar S.A." style="height:72px" onerror="this.style.display='none'"></div>
+    <div class="login-sub">Guardia — Acceso restringido</div>
+    <form id="loginForm" autocomplete="off">
+      <div class="login-field">
+        <label>Usuario</label>
+        <input type="text" id="loginUser" autocomplete="username" required>
+      </div>
+      <div class="login-field">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="login-btn">Ingresar</button>
+      <div class="login-error" id="loginError">Usuario o contraseña incorrectos</div>
+    </form>
+  </div>
+</div>
+
+<div class="app-header">
+  <div class="hdr-top">
+    <div class="logo-box">
+      <img src="logo-multipar.png" alt="Multipar S.A." style="height:34px" onerror="this.style.display='none'">
+    </div>
+    <div class="hdr-info">
+      <div class="hdr-coord">👤 Coord: —</div>
+    </div>
+    <div class="hdr-despachos">Despachos en el mes: <strong style="font-size:10px">En proceso</strong></div>
+    <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Cambiar tema">🌙</div>
+  </div>
+  <div class="search-global">
+    <span>🔍</span>
+    <input type="text" id="globalSearch" placeholder="Buscar práctico, buque, agencia..." oninput="globalSearch(this.value)">
+    <span class="search-clear" id="searchClear" onclick="clearSearch()">✕</span>
+  </div>
+  <div class="hdr-meta">
+    <div class="hdr-fecha">📅 Cargando…</div>
+  </div>
+</div>
+<div class="loading-banner" id="loadingBanner">⏳ Cargando datos de guardia en vivo…</div>
+
+<div class="nav-tabs-wrap">
+  <div class="nav-arrow nav-arrow-l" onclick="scrollTabs(-1)">‹</div>
+  <div class="nav-tabs" id="navTabs">
+    <div class="nav-tab active" onclick="showTab('turno')">👥 Turno</div>
+    <div class="nav-tab" onclick="showTab('buques')">🚢 Buques</div>
+    <div class="nav-tab" onclick="showTab('previstos')">📋 Previstos</div>
+    <div class="nav-tab" onclick="showTab('novedades')">📢 Novedades</div>
+    <div class="nav-tab" onclick="showTab('remises')">🚕 Remises</div>
+    <div class="nav-tab" onclick="showTab('info')">🔗 Info</div>
+  </div>
+  <div class="nav-arrow nav-arrow-r" onclick="scrollTabs(1)">›</div>
+</div>
+
+<!-- ══ TURNO ══ -->
+<div class="section active" id="sec-turno">
+
+  <div class="stats-row" style="margin-top:10px">
+    <div class="stat-box"><div class="stat-num verde">—</div><div class="stat-label">En turno</div></div>
+    <div class="stat-box"><div class="stat-num naranja">—</div><div class="stat-label">Francos</div></div>
+    <div class="stat-box"><div class="stat-num rojo">—</div><div class="stat-label">Varios</div></div>
+    <div class="stat-box"><div class="stat-num azul">—</div><div class="stat-label">Contactados</div></div>
+  </div>
+
+  <!-- Filtros turno -->
+  <div class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-btn active" onclick="filterTurno('todos',this)">Todos</div>
+      <div class="filter-btn verde" onclick="filterTurno('turno',this)">En turno</div>
+      <div class="filter-btn naranja" onclick="filterTurno('franco',this)">Francos</div>
+      <div class="filter-btn rojo" onclick="filterTurno('varios',this)">Varios</div>
+      <div class="filter-btn" onclick="filterTurno('cambio',this)">📞 Contactados</div>
+    </div>
+    <div class="filter-search">
+      <span>🔍</span>
+      <input type="text" id="turnoSearch" placeholder="Buscar práctico..." oninput="searchTurno(this.value)">
+    </div>
+    <div class="sort-bar">
+      <span class="sort-label">Ordenar:</span>
+      <div class="sort-btn active" onclick="sortTurno('orden',this)">Por posición</div>
+      <div class="sort-btn" onclick="sortTurno('alfa',this)">A–Z</div>
+      <div class="sort-btn" onclick="sortTurno('hora',this)">Por hora</div>
+    </div>
+  </div>
+
+  <!-- TURNO ACTIVO -->
+  <div class="card" id="cardTurno">
+    <div class="card-head">
+      <span>🟢</span><span class="card-head-title">En turno</span><span class="card-head-count" id="cntTurno">8</span>
+    </div>
+    <div id="listaTurno">
+      <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+    
+    </div>
+  </div>
+
+  <!-- GUARDIA ROSARIO (bajada) -->
+  <div class="card" id="cardGuardiaRosario" style="display:none">
+    <div class="card-head"><span>👥</span><span class="card-head-title">Guardia Rosario (bajada)</span><span class="card-head-count" id="cntGuardiaRosario">—</span></div>
+    <div id="listaGuardiaRosario">
+      <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+    </div>
+  </div>
+
+  <!-- FRANCOS -->
+  <div class="card" id="cardFrancos">
+    <div class="card-head"><span>🟡</span><span class="card-head-title">Francos</span><span class="card-head-count" id="cntFrancos">11</span></div>
+    <div id="listaFrancos">
+      <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+    
+    </div>
+  </div>
+
+  <!-- VARIOS -->
+  <div class="card" id="cardVarios">
+    <div class="card-head"><span>🔵</span><span class="card-head-title">Varios</span><span class="card-head-count">—</span></div>
+    <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+  </div>
+</div>
+
+<!-- ══ BUQUES ══ -->
+<div class="section" id="sec-buques">
+  <div class="card" style="margin-top:10px">
+    <div class="leyenda">
+      <div class="ley-item">🤝 Nos cubren</div>
+      <div class="ley-item">🔄 Cubrimos a otro</div>
+      <div class="ley-item">👤 Propio</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-btn active" onclick="filterBuques('todos',this)">Todos</div>
+      <div class="filter-btn verde" onclick="filterBuques('subida',this)">⬆️ Subida</div>
+      <div class="filter-btn" onclick="filterBuques('bajada',this)" style="--c:#2b5797">⬇️ Bajada</div>
+      <div class="filter-btn naranja" onclick="filterBuques('movimiento',this)">🔄 Movimiento</div>
+    </div>
+    <div class="sort-bar">
+      <span class="sort-label">Ordenar:</span>
+      <div class="sort-btn active" onclick="sortBuques('hora',this)">Por hora</div>
+      <div class="sort-btn" onclick="sortBuques('nombre',this)">A–Z buque</div>
+    </div>
+  </div>
+
+  <div id="listaBuquesDesp">
+    <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+    <div class="empty" id="emptyBuques" style="display:none">Sin resultados</div>
+  </div>
+</div>
+
+<!-- ══ PREVISTOS ══ -->
+<div class="section" id="sec-previstos">
+
+  <div class="filter-bar" style="margin-top:10px">
+    <div class="filter-row">
+      <div class="filter-btn active" onclick="filterPrev('todos',this)">Todos</div>
+      <div class="filter-btn verde" onclick="filterPrev('subida',this)">⬆️ Subida</div>
+      <div class="filter-btn" onclick="filterPrev('bajada',this)">⬇️ Bajada</div>
+      <div class="filter-btn naranja" onclick="filterPrev('movimiento',this)">🔄 Campana/Zárate</div>
+      <div class="filter-btn" onclick="filterPrev('autorizado',this)">✅ AUT</div>
+      <div class="filter-btn" onclick="filterPrev('posible',this)">⚠️ Pos.AUT</div>
+    </div>
+    <div class="filter-search">
+      <span>🔍</span>
+      <input type="text" id="prevSearch" placeholder="Buscar buque o agencia..." oninput="searchPrev(this.value)">
+    </div>
+    <div class="sort-bar">
+      <span class="sort-label">Ordenar:</span>
+      <div class="sort-btn active" onclick="sortPrev('hora',this)">Por hora</div>
+      <div class="sort-btn" onclick="sortPrev('nombre',this)">A–Z buque</div>
+      <div class="sort-btn" onclick="sortPrev('agencia',this)">Por agencia</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:8px">
+    <div class="leyenda" style="border-radius:8px;border:0.5px solid var(--borde)">
+      <div class="ley-item"><span style="color:var(--verde);font-weight:700">■</span> Autorizado</div>
+      <div class="ley-item"><span style="color:var(--naranja);font-weight:700">■</span> Pos.AUT</div>
+      <div class="ley-item"><span style="color:var(--gris3);font-weight:700">■</span> Sin confirmar</div>
+      <div class="ley-item">○/✓ Agencia contactada</div>
+    </div>
+  </div>
+
+  <div id="listaPrevistos">
+    <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+    <div class="empty" id="emptyPrev" style="display:none">Sin resultados para este filtro</div>
+  </div>
+</div>
+
+<!-- ══ NOVEDADES ══ -->
+<div class="section" id="sec-novedades">
+
+  <div class="filter-bar" style="margin-top:10px">
+    <div class="filter-row">
+      <div class="filter-btn active" style="cursor:default">Todos</div>
+    </div>
+    <div class="filter-search">
+      <span>🔍</span>
+      <input type="text" id="novSearch" placeholder="Buscar en novedades (autor o texto)...">
+    </div>
+    <div class="sort-bar">
+      <span class="sort-label">Ordenar:</span>
+      <div class="sort-btn active" onclick="sortNov('reciente',this)">Más reciente</div>
+      <div class="sort-btn" onclick="sortNov('permanente',this)">Permanentes primero</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span>⚓</span><span class="card-head-title">Determinantes</span></div>
+    <div id="listaDeterminantes">
+      <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+    </div>
+  </div>
+
+  <div class="card" id="listaNov">
+    <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+  </div>
+</div>
+
+<!-- ══ REMISES ══ -->
+<div class="section" id="sec-remises">
+  <div id="listaRemises" style="margin-top:10px">
+    <div class="loading-skel"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="txt">Cargando datos en vivo…</span></div>
+  </div>
+</div>
+
+<!-- ══ INFO ══ -->
+<div class="section" id="sec-info">
+  <div class="card" style="margin-top:10px">
+    <div class="card-head"><span>🔗</span><span class="card-head-title">Links de consulta</span></div>
+    <a class="link-row" href="https://www.hidro.gob.ar/oceanografia/pronostico.asp" target="_blank"><div class="link-icon">🌊</div><div class="link-text"><div class="link-title">Alturas horarias — SHN</div><div class="link-url">hidro.gob.ar</div></div><span style="color:var(--gris3)">›</span></a>
+    <a class="link-row" href="https://contenidosweb.prefecturanaval.gob.ar/reserva/" target="_blank"><div class="link-icon">🚨</div><div class="link-text"><div class="link-title">Reservas de canal — PNA</div><div class="link-url">prefecturanaval.gob.ar</div></div><span style="color:var(--gris3)">›</span></a>
+    <a class="link-row" href="https://www.argentina.gob.ar/transporte/puertos-vias-navegables-y-marina-mercante/planillas-de-determinantes/2024" target="_blank"><div class="link-icon">📊</div><div class="link-text"><div class="link-title">Planillas de determinantes</div><div class="link-url">argentina.gob.ar</div></div><span style="color:var(--gris3)">›</span></a>
+    <a class="link-row" href="https://www.comisionriodelaplata.org/vientosymareas.php" target="_blank"><div class="link-icon">💨</div><div class="link-text"><div class="link-title">Vientos y mareas — CRP</div><div class="link-url">comisionriodelaplata.org</div></div><span style="color:var(--gris3)">›</span></a>
+    <a class="link-row" href="https://ltkprac.riopar.com.ar/LTKPracticaje/" target="_blank"><div class="link-icon">⚓</div><div class="link-text"><div class="link-title">LTKPrac — Sistema Guardia</div><div class="link-url">ltkprac.riopar.com.ar</div></div><span style="color:var(--gris3)">›</span></a>
+  </div>
+  <div class="card">
+    <div class="card-head"><span>📞</span><span class="card-head-title">Teléfonos de servicio</span></div>
+    <div class="sec-label">Lanchas</div>
+    <div class="tel-row"><span class="tel-puerto">SL Norte</span><a href="tel:+5493414020345" class="tel-num">+54 9 3414 02-0345</a></div>
+    <div class="tel-row"><span class="tel-puerto">SL Sur</span><a href="tel:+5493414005997" class="tel-num">+54 9 3414 00-5997</a></div>
+    <div class="tel-row"><span class="tel-puerto">Lancha del Este</span><a href="tel:+5491131757979" class="tel-num">+54 9 11 3175-7979</a></div>
+    <div class="tel-row"><span class="tel-puerto">Escobar</span><a href="tel:+5493489511953" class="tel-num">3489-511953</a></div>
+    <div class="tel-row"><span class="tel-puerto">Brazo Largo</span><a href="tel:+5491168868141" class="tel-num">+54 9 11 6886-8141</a></div>
+    <div class="sec-label">Serviprac</div>
+    <div class="tel-row"><span class="tel-puerto">Rosario</span><a href="tel:+5493414020325" class="tel-num">+54 9 3414 02-0325</a></div>
+    <div class="tel-row"><span class="tel-puerto">Gral. Lagos / A. Seco</span><a href="tel:+5493414027988" class="tel-num">+54 9 3414 02-7988</a></div>
+    <div class="tel-row"><span class="tel-puerto">Campana</span><a href="tel:+5493414020473" class="tel-num">+54 9 3414 02-0473</a></div>
+    <div class="tel-row"><span class="tel-puerto">Zárate</span><a href="tel:+5491140955604" class="tel-num">+54 9 11 4095-5604</a></div>
+    <div class="tel-row"><span class="tel-puerto">San Pedro – Transpilot</span><a href="tel:+5493364369869" class="tel-num">+54 9 3364 36-9869</a></div>
+    <div class="tel-row"><span class="tel-puerto">Rllo / VConst</span><a href="tel:+5493364315597" class="tel-num">+54 9 3364 31-5597</a></div>
+    <div class="tel-row"><span class="tel-puerto">SN Venticello</span><a href="tel:+5493412568435" class="tel-num">+54 9 3412 56-8435</a></div>
+  </div>
+</div>
+
+<script>
+// ── MODO NOCTURNO ──────────────────────────────────────────────────
+(function () {
+  var KEY = 'mp_theme';
+  var guardado = localStorage.getItem(KEY);
+  var inicial = guardado || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  aplicarTema(inicial);
+
+  function aplicarTema(tema) {
+    document.documentElement.setAttribute('data-theme', tema);
+    var btn = document.getElementById('themeToggle');
+    if (btn) btn.textContent = tema === 'dark' ? '☀️' : '🌙';
+  }
+  window.toggleTheme = function () {
+    var actual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(KEY, actual);
+    aplicarTema(actual);
+  };
+  document.addEventListener('DOMContentLoaded', function () { aplicarTema(document.documentElement.getAttribute('data-theme') || inicial); });
+})();
+
+// ── TAB NAV ──────────────────────────────────────────────────────
+function scrollTabs(dir){
+  var el = document.getElementById('navTabs');
+  if (el) el.scrollBy({ left: dir * 120, behavior: 'smooth' });
+}
+function showTab(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  const tabs={turno:0,buques:1,previstos:2,novedades:3,remises:4,info:5};
+  document.querySelectorAll('.nav-tab')[tabs[id]].classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ── TOGGLE TILDE ──────────────────────────────────────────────────
+function toggle(el){
+  el.classList.toggle('ok');
+  el.textContent=el.classList.contains('ok')?'✓':'○';
+}
+
+// ── GLOBAL SEARCH ─────────────────────────────────────────────────
+function globalSearch(q){
+  const clear=document.getElementById('searchClear');
+  clear.style.display=q?'block':'none';
+  q=q.toLowerCase().trim();
+  if(!q){
+    document.querySelectorAll('.prac-row,.franco-row,.varios-row,.desp-card,.buque-row,.obs-item').forEach(el=>el.classList.remove('hidden'));
+    return;
+  }
+  // buscar en turno
+  document.querySelectorAll('#listaTurno .prac-row').forEach(el=>{
+    const nom=el.dataset.nombre||'';
+    el.classList.toggle('hidden',!nom.toLowerCase().includes(q));
+  });
+  document.querySelectorAll('#listaFrancos .franco-row').forEach(el=>{
+    const nom=el.dataset.nombre||'';
+    el.classList.toggle('hidden',!nom.toLowerCase().includes(q));
+  });
+  // buques
+  document.querySelectorAll('#listaBuquesDesp .desp-card').forEach(el=>{
+    const nom=el.dataset.nombre||'';
+    el.classList.toggle('hidden',!nom.toLowerCase().includes(q));
+  });
+  document.querySelectorAll('#listaPrevistos .buque-row').forEach(el=>{
+    const nom=(el.dataset.nombre||'')+' '+(el.dataset.agencia||'');
+    el.classList.toggle('hidden',!nom.toLowerCase().includes(q));
+  });
+  // mostrar tab turno si hay resultados ahí
+  showTab('turno');
+}
+function clearSearch(){
+  document.getElementById('globalSearch').value='';
+  document.getElementById('searchClear').style.display='none';
+  globalSearch('');
+}
+
+// ── TURNO FILTERS ─────────────────────────────────────────────────
+let turnoFiltro='todos';
+function filterTurno(f,btn){
+  turnoFiltro=f;
+  document.querySelectorAll('.filter-bar .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyTurnoFilter();
+}
+function applyTurnoFilter(){
+  const q=(document.getElementById('turnoSearch').value||'').toLowerCase();
+  // turno activo
+  document.querySelectorAll('#listaTurno .prac-row').forEach(el=>{
+    const tipos=el.dataset.tipo||'';
+    const nom=(el.dataset.nombre||'').toLowerCase();
+    const tipoOk=turnoFiltro==='todos'||tipos.includes(turnoFiltro);
+    const qOk=!q||nom.includes(q);
+    el.classList.toggle('hidden',!(tipoOk&&qOk));
+  });
+  // francos
+  const showFrancos=turnoFiltro==='todos'||turnoFiltro==='franco'||turnoFiltro==='cambio';
+  document.getElementById('cardFrancos').style.display=showFrancos?'':'none';
+  if(showFrancos){
+    document.querySelectorAll('#listaFrancos .franco-row').forEach(el=>{
+      const tipos=el.dataset.tipo||'';
+      const nom=(el.dataset.nombre||'').toLowerCase();
+      const tipoOk=turnoFiltro==='todos'||tipos.includes(turnoFiltro);
+      const qOk=!q||nom.includes(q);
+      el.classList.toggle('hidden',!(tipoOk&&qOk));
+    });
+  }
+  // varios
+  const showVarios=turnoFiltro==='todos'||turnoFiltro==='varios';
+  document.getElementById('cardVarios').style.display=showVarios?'':'none';
+}
+function searchTurno(q){ applyTurnoFilter(); }
+
+function sortTurno(by,btn){
+  document.querySelectorAll('.sort-bar .sort-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const lista=document.getElementById('listaTurno');
+  const rows=[...lista.querySelectorAll('.prac-row')];
+  rows.sort((a,b)=>{
+    if(by==='alfa') return (a.dataset.nombre||'').localeCompare(b.dataset.nombre||'');
+    if(by==='hora') return (a.dataset.hora||'').localeCompare(b.dataset.hora||'');
+    return parseInt(a.dataset.pos||0)-parseInt(b.dataset.pos||0);
+  });
+  rows.forEach(r=>lista.appendChild(r));
+}
+
+// ── BUQUES FILTERS ────────────────────────────────────────────────
+let buquesFiltro='todos';
+function filterBuques(f,btn){
+  buquesFiltro=f;
+  document.querySelectorAll('#sec-buques .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyBuquesFilter();
+}
+function applyBuquesFilter(){
+  let visible=0;
+  document.querySelectorAll('#listaBuquesDesp .desp-card').forEach(el=>{
+    const tipo=el.dataset.tipo||'';
+    const ok=buquesFiltro==='todos'||tipo===buquesFiltro;
+    el.classList.toggle('hidden',!ok);
+    if(ok) visible++;
+  });
+  document.getElementById('emptyBuques').style.display=visible?'none':'block';
+}
+function sortBuques(by,btn){
+  document.querySelectorAll('#sec-buques .sort-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const lista=document.getElementById('listaBuquesDesp');
+  const cards=[...lista.querySelectorAll('.desp-card')];
+  cards.sort((a,b)=>{
+    if(by==='nombre') return (a.dataset.nombre||'').localeCompare(b.dataset.nombre||'');
+    return (a.dataset.hora||'').localeCompare(b.dataset.hora||'');
+  });
+  cards.forEach(c=>lista.appendChild(c));
+}
+
+// ── PREVISTOS FILTERS ─────────────────────────────────────────────
+let prevFiltro='todos'; let prevSearch='';
+function filterPrev(f,btn){
+  prevFiltro=f;
+  document.querySelectorAll('#sec-previstos .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyPrevFilter();
+}
+function searchPrev(q){ prevSearch=q.toLowerCase(); applyPrevFilter(); }
+function applyPrevFilter(){
+  let visible=0;
+  document.querySelectorAll('#listaPrevistos .buque-row').forEach(el=>{
+    const tipo=el.dataset.tipo||'';
+    const estado=el.dataset.estado||'';
+    const nom=((el.dataset.nombre||'')+' '+(el.dataset.agencia||'')).toLowerCase();
+    const tipoOk=prevFiltro==='todos'||tipo===prevFiltro||estado===prevFiltro;
+    const qOk=!prevSearch||nom.includes(prevSearch);
+    const ok=tipoOk&&qOk;
+    el.classList.toggle('hidden',!ok);
+    if(ok) visible++;
+  });
+  document.getElementById('emptyPrev').style.display=visible?'none':'block';
+}
+function sortPrev(by,btn){
+  document.querySelectorAll('#sec-previstos .sort-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const lista=document.getElementById('listaPrevistos');
+  const rows=[...lista.querySelectorAll('.buque-row')];
+  rows.sort((a,b)=>{
+    if(by==='nombre') return (a.dataset.nombre||'').localeCompare(b.dataset.nombre||'');
+    if(by==='agencia') return (a.dataset.agencia||'').localeCompare(b.dataset.agencia||'');
+    return (a.dataset.hora||'').localeCompare(b.dataset.hora||'');
+  });
+  rows.forEach(r=>lista.appendChild(r));
+}
+
+// ── NOVEDADES FILTERS ─────────────────────────────────────────────
+let novFiltro='todos';
+function filterNov(f,btn){
+  novFiltro=f;
+  document.querySelectorAll('#sec-novedades .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyNovFilter();
+}
+function applyNovFilter(){
+  document.querySelectorAll('#listaNov .obs-item').forEach(el=>{
+    const tipo=el.dataset.tipo||'';
+    el.classList.toggle('hidden',novFiltro!=='todos'&&tipo!==novFiltro);
+  });
+}
+function sortNov(by,btn){
+  document.querySelectorAll('#sec-novedades .sort-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const lista=document.getElementById('listaNov');
+  const items=[...lista.querySelectorAll('.obs-item')];
+  items.sort((a,b)=>{
+    if(by==='permanente'){
+      const ap=a.dataset.tipo==='permanente'?0:1;
+      const bp=b.dataset.tipo==='permanente'?0:1;
+      return ap-bp||parseInt(a.dataset.orden)-parseInt(b.dataset.orden);
+    }
+    return parseInt(a.dataset.orden)-parseInt(b.dataset.orden);
+  });
+  items.forEach(i=>lista.appendChild(i));
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script>
-/*
- * guardia-reader.js — lector del Excel de la guardia MULTIPAR (estructura v5)
- *
- * Funciona en el navegador y en Node. Necesita ExcelJS (se le pasa como parámetro).
- *   const datos = await GuardiaReader.leerGuardia(ExcelJS, arrayBufferOBuffer);
- *
- * Principios:
- *  - Lee por ENCABEZADO y por ANCLA (rótulos de la columna A), nunca por fila/columna fija.
- *  - No rompe: lo que no entiende lo devuelve crudo y lo anota en `avisos`.
- *  - Los colores se interpretan con la leyenda "REFERENCIAS DE COLOR" del propio archivo.
- */
-(function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.GuardiaReader = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
-  'use strict';
-
-  var VERSION = '0.1';
-
-  // ───────────── utilidades de texto / valores ─────────────
-  function norm(s) {
-    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
-      .toUpperCase().replace(/\s+/g, ' ').trim();
-  }
-  function limpio(s) { return String(s).replace(/\\/g, '').replace(/\s+/g, ' ').trim(); }
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function ymd(d) { return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
-  var EPOCH_1899 = Date.UTC(1899, 11, 30);
-
-  // Valor "plano" de una celda de ExcelJS (fórmulas, rich text, etc.)
-  function raw(cell) {
-    // Celda combinada: el valor vive en la celda de arriba a la izquierda; ExcelJS lo repite en el resto
-    // del rango, así que esas se tratan como vacías (si no, un dato combinado se leería varias veces).
-    if (cell && cell.isMerged && cell.master && cell.master !== cell && cell.master.address !== cell.address) return null;
-    var v = cell ? cell.value : null;
-    if (v == null) return null;
-    if (typeof v === 'object' && !esDate(v)) {
-      if ('result' in v) v = v.result;
-      else if (v.richText) v = v.richText.map(function (t) { return t.text; }).join('');
-      else if (v.text != null) v = v.text;
-      else return null;
-    }
-    if (v == null) return null;
-    if (typeof v === 'string') { v = limpio(v); if (v === '') return null; }
-    return v;
-  }
-
-  // ───────────── fechas y horas ─────────────
-  function esDate(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
-  function esFecha(v) { return esDate(v) && v.getUTCFullYear() >= 1950; }
-  function esSoloHora(v) { return esDate(v) && v.getUTCFullYear() < 1950; }
-
-  function aFecha(v) {
-    if (esFecha(v)) return ymd(v);
-    if (typeof v === 'number' && v >= 1) return ymd(new Date(EPOCH_1899 + Math.round(v) * 86400000));
-    if (typeof v === 'string') {
-      var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
-      if (m) {
-        var y = +m[3]; if (y < 100) y += 2000;
-        return y + '-' + pad(+m[2]) + '-' + pad(+m[1]);
-      }
-    }
-    return null;
-  }
-
-  // → { hora:'HH:MM', franja:null } | { hora:null, franja:'AM'|'PM' } | null (no entendida)
-  function aHora(v) {
-    if (v == null) return { hora: null, franja: null };
-    if (esSoloHora(v)) {
-      var mins = Math.round((((v.getTime() - EPOCH_1899) % 86400000) + 86400000) % 86400000 / 60000);
-      return { hora: pad(Math.floor(mins / 60) % 24) + ':' + pad(mins % 60), franja: null };
-    }
-    if (typeof v === 'number' && v >= 0 && v < 1) {
-      var m2 = Math.round(v * 1440);
-      return { hora: pad(Math.floor(m2 / 60) % 24) + ':' + pad(m2 % 60), franja: null };
-    }
-    if (typeof v === 'string') {
-      var s = norm(v);
-      if (s === 'AM' || s === 'PM') return { hora: null, franja: s };
-      var m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-      if (m && +m[1] < 24 && +m[2] < 60) return { hora: pad(+m[1]) + ':' + pad(+m[2]), franja: null };
-    }
-    return null;
-  }
-
-  // Día "dd" + hora sin mes → fecha completa, eligiendo el mes más cercano a la fecha de referencia
-  function resolverDia(dia, hh, mm, ref) {
-    if (!ref) return null;
-    var p = ref.split('-').map(Number), refT = Date.UTC(p[0], p[1] - 1, p[2]), best = null, bd = Infinity;
-    [-1, 0, 1].forEach(function (dm) {
-      var t = Date.UTC(p[0], p[1] - 1 + dm, dia), dt = new Date(t);
-      if (dt.getUTCDate() !== dia) return;
-      var diff = Math.abs(t - refT);
-      if (diff < bd) { bd = diff; best = dt; }
-    });
-    return best ? ymd(best) + 'T' + pad(hh) + ':' + pad(mm) : null;
-  }
-
-  // ───────────── puertos (equivalencias) ─────────────
-  function esPend(v) { return v === '?' || (v != null && /^A\s*CONFIRMAR$/i.test(String(v).trim())); }
-  var PUERTOS_ALIAS = {
-    SL: ['SL', 'SANLORENZO'], ROS: ['ROS', 'ROSARIO'], AS: ['AS', 'ARROYOSECO'],
-    SN: ['SN', 'SANNICOLAS'], SP: ['SP', 'SANPEDRO'], TIM: ['TIM', 'TIMBUES'],
-    CPNA: ['CPNA', 'CAMPANA'], ZTE: ['ZTE', 'ZARATE'], ESC: ['ESC', 'ESCOBAR'],
-    RLLO: ['RLLO', 'RAMALLO'], NPAL: ['NPAL', 'NUEVAPALMIRA', 'NUEVAPALMIRA(UY)', 'NUEVAPALMIRAUY'], LP: ['LP', 'LASPALMAS'],
-    K171: ['K171', 'KM171', 'KM171PG'], ZC: ['ZC', 'ZONACOMUN'], VCON: ['VCON', 'VILLACONSTITUCION'],
-    BL: ['BL', 'BRAZOLARGO'], GUAZU: ['GUAZU', 'TERMINALGUAZU', 'DELGUAZU'], DD: ['DD', 'DELTADOCK'],
-    PPER: ['PPER', 'PUNTAPEREIRA', 'PUNTAPEREIRA(UY)', 'PUNTAPEREIRAUY'], K238: ['K238', 'KM238PA', 'KM238'],
-    IBI: ['IBI', 'IBICUY'], MAZ: ['MAZ', 'MAZARUCA'], GLAG: ['GLAG', 'GENERALLAGOS'], VGG: ['VGG'],
-    SM: ['SM', 'SANMARTIN'], DIAM: ['DIAM', 'DIAMANTE'], SF: ['SF', 'SANTAFE'], PNA: ['PNA', 'PARANA'], ATU: ['ATU', 'ATUCHA']
-  };
-  var ALIAS_A_CODIGO = {};
-  Object.keys(PUERTOS_ALIAS).forEach(function (k) {
-    PUERTOS_ALIAS[k].forEach(function (a) { ALIAS_A_CODIGO[a] = k; });
-  });
-  function codigoPuerto(texto) {
-    if (texto == null) return null;
-    return ALIAS_A_CODIGO[norm(texto).replace(/[.\s]/g, '')] || null;
-  }
-
-  // ───────────── colores / leyenda ─────────────
-  function argb(cell) {
-    var f = cell && cell.fill;
-    if (!f || f.type !== 'pattern' || f.pattern !== 'solid' || !f.fgColor || !f.fgColor.argb) return null;
-    return f.fgColor.argb.slice(-6).toUpperCase();
-  }
-  function distancia(a, b) {
-    var d = 0;
-    for (var i = 0; i < 3; i++) {
-      var x = parseInt(a.substr(i * 2, 2), 16) - parseInt(b.substr(i * 2, 2), 16);
-      d += x * x;
-    }
-    return Math.sqrt(d);
-  }
-  function idLeyenda(etiqueta) {
-    var n = norm(etiqueta);
-    if (/^X\s*=/.test(n) || /DESPACHADO$/.test(n) && /^X/.test(n)) return 'despachado';
-    if (/PROXIMO A DESPACHAR/.test(n)) return 'proximo_a_despachar';
-    if (/DESPACHADO NUESTRO/.test(n)) return 'despachado_nuestro';
-    if (/MANIOBRA/.test(n)) return 'maniobra';
-    if (/DEMORA/.test(n)) return 'demora';
-    if (/CUBIERTO EN FRANCO/.test(n)) return 'cubierto_en_franco';
-    if (/CUBIERTO POR OTRA/.test(n)) return 'cubierto_por_otra_empresa'; // nos cubren
-    if (/CUBIERTO A OTRA/.test(n)) return 'cubierto_a_otra_empresa';     // cubrimos a otra
-    if (/CANCELADO/.test(n)) return 'cancelado';
-    if (/CALADO DESDE/.test(n)) return 'calado_2_practicos';
-    return null;
-  }
-  var TOLERANCIA_COLOR = 28; // el verde cambió de 75A67C a 7FB77E entre versiones: se tolera
-  function colorId(hex, leyenda) {
-    if (!hex || !leyenda.length) return null;
-    var mejor = null, md = Infinity;
-    leyenda.forEach(function (e) { var d = distancia(hex, e.hex); if (d < md) { md = d; mejor = e; } });
-    return md <= TOLERANCIA_COLOR ? mejor.id : null;
-  }
-
-  // ───────────── lector principal ─────────────
-  function parseGuardia(wb) {
-    var avisos = [], vistos = {};
-    function aviso(nivel, hoja, celda, tipo, mensaje) {
-      var k = [nivel, hoja, celda, tipo].join('|');
-      if (vistos[k]) return; vistos[k] = 1;
-      avisos.push({ nivel: nivel, hoja: hoja, celda: celda || null, tipo: tipo, mensaje: mensaje });
-    }
-    var out = {
-      version: VERSION, hojas: wb.worksheets.map(function (w) { return w.name; }),
-      guardia: null, leyendaColores: [], catalogo: [],
-      turno: [], guardiaRosario: [],
-      viajes: { aRosario: [], deRosario: [], aCampana: [], deCampana: [], movimientos: [] },
-      francos: { enFranco: [], fueraDeTurno: [], licencias: [] },
-      programacion: {}, servicios: {}, avisos: avisos
-    };
-
-    function hoja(nombre) {
-      var ws = wb.getWorksheet(nombre);
-      if (!ws) aviso('error', nombre, null, 'hoja_faltante', 'No encuentro la hoja ' + nombre);
-      return ws;
-    }
-
-    // ── catálogo de prácticos (hoja LISTAS, columna B) ──
-    var catalogoSet = {};
-    var wsL = hoja('LISTAS');
-    if (wsL) {
-      for (var r = 2; r <= wsL.rowCount; r++) {
-        var n = raw(wsL.getCell(r, 2));
-        if (n) { out.catalogo.push(limpio(n)); catalogoSet[norm(n)] = true; }
-      }
-    }
-    function esPropio(nombre) { return !!catalogoSet[norm(nombre)]; }
-
-    // ── hoja TURNO ──
-    var wsT = hoja('TURNO');
-    var leyenda = [];
-    var refFecha = null;
-
-    if (wsT) {
-      var NC = Math.max(wsT.columnCount, 30), NR = wsT.rowCount;
-
-      // encabezado de la guardia (filas 1-4)
-      var fechas = [], horas = [], operador = null, coord = null;
-      for (var rr = 1; rr <= 4; rr++) {
-        for (var cc = 1; cc <= NC; cc++) {
-          var v = raw(wsT.getCell(rr, cc));
-          if (v == null) continue;
-          if (rr === 2 && esFecha(v)) fechas.push(ymd(v));
-          else if (rr === 2 && esSoloHora(v)) horas.push(aHora(v).hora);
-          var t = typeof v === 'string' ? norm(v) : '';
-          if (t === 'OPERADOR' || t === 'COORD.' || t === 'COORDINADOR') {
-            for (var k = cc + 1; k <= NC; k++) {
-              var vv = raw(wsT.getCell(rr, k));
-              if (vv != null) { if (t === 'OPERADOR') operador = limpio(vv); else coord = limpio(vv); break; }
-            }
-          }
-        }
-      }
-      out.guardia = {
-        fechaInicio: fechas[0] || null, horaInicio: horas[0] || null,
-        fechaFin: fechas[1] || null, horaFin: horas[1] || null,
-        operador: operador, coordinador: coord
-      };
-      refFecha = out.guardia.fechaInicio;
-      if (!refFecha) aviso('error', 'TURNO', 'D2', 'fecha_guardia', 'No encuentro la fecha de la guardia en el encabezado: no puedo completar los días de los puertos.');
-
-      // anclas en columna A
-      var ANCLAS = {
-        'GUARDIA ROSARIO': 'rosario', 'EN VIAJE A ROSARIO': 'aRosario', 'EN VIAJE DE ROSARIO': 'deRosario',
-        'EN VIAJE A CAMPANA': 'aCampana', 'EN VIAJE DE CAMPANA': 'deCampana', 'MOVIMIENTOS': 'movimientos',
-        'REFERENCIAS DE COLOR': 'referencias'
-      };
-      var anclas = [];
-      for (var ra = 1; ra <= NR; ra++) {
-        var ta = norm(raw(wsT.getCell(ra, 1)) || '');
-        if (!ta) continue;
-        if (ta.indexOf('LISTADO DE PRACTICOS') === 0) anclas.push({ id: 'turno', fila: ra });
-        else if (ANCLAS[ta]) anclas.push({ id: ANCLAS[ta], fila: ra });
-      }
-      Object.keys(ANCLAS).map(function (k) { return ANCLAS[k]; }).concat(['turno']).forEach(function (id) {
-        if (!anclas.some(function (a) { return a.id === id; }))
-          aviso('error', 'TURNO', null, 'ancla_faltante', 'No encuentro el bloque "' + id + '" en la columna A.');
-      });
-      anclas.sort(function (a, b) { return a.fila - b.fila; });
-      anclas.forEach(function (a, i) { a.fin = (anclas[i + 1] ? anclas[i + 1].fila - 1 : NR); });
-      function bloque(id) { return anclas.filter(function (a) { return a.id === id; })[0]; }
-
-      // leyenda de colores (se lee del propio archivo)
-      var bl = bloque('referencias');
-      if (bl) {
-        for (var rl = bl.fila + 1; rl <= bl.fin; rl++) {
-          var etiqueta = null;
-          for (var cl = 2; cl <= 5 && !etiqueta; cl++) { var e = raw(wsT.getCell(rl, cl)); if (typeof e === 'string') etiqueta = e; }
-          if (!etiqueta) continue;
-          var hexL = null;
-          for (var ch = 1; ch <= 5 && !hexL; ch++) hexL = argb(wsT.getCell(rl, ch));
-          if (!hexL) continue;
-          var idL = idLeyenda(etiqueta);
-          if (!idL) { aviso('aviso', 'TURNO', 'A' + rl, 'leyenda_desconocida', 'Color de la leyenda sin significado conocido: "' + etiqueta + '"'); continue; }
-          leyenda.push({ id: idL, etiqueta: etiqueta, hex: hexL });
-        }
-      }
-      if (!leyenda.length) aviso('error', 'TURNO', null, 'sin_leyenda', 'No pude leer la leyenda de colores: no voy a interpretar colores.');
-      out.leyendaColores = leyenda;
-
-      // lectura de encabezados de un bloque
-      function encabezado(b, claves) {
-        var hr = null;
-        for (var r2 = b.fila + 1; r2 <= Math.min(b.fila + 3, b.fin); r2++) {
-          var a = norm(raw(wsT.getCell(r2, 1)) || '');
-          if (a === 'NRO' || a === 'SERVICIO') { hr = r2; break; }
-        }
-        if (!hr) { aviso('error', 'TURNO', null, 'encabezado_faltante', 'No encuentro la fila de encabezados bajo "' + b.id + '".'); return null; }
-        var campos = [];
-        for (var c = 1; c <= NC; c++) { var tx = norm(raw(wsT.getCell(hr, c)) || ''); if (tx) campos.push({ key: tx, col: c }); }
-        campos.forEach(function (f, i) { f.fin = campos[i + 1] ? campos[i + 1].col - 1 : NC; });
-        var mapa = {};
-        campos.forEach(function (f) { if (!mapa[f.key]) mapa[f.key] = f; });
-        var falta = claves.filter(function (k) { return !mapa[k]; });
-        if (falta.length) { aviso('error', 'TURNO', 'fila ' + hr, 'encabezado_faltante', 'Faltan columnas en "' + b.id + '": ' + falta.join(', ')); return null; }
-        return { fila: hr, f: mapa };
-      }
-      function leer(r2, f) {
-        for (var c = f.col; c <= f.fin; c++) { var v2 = raw(wsT.getCell(r2, c)); if (v2 != null) return { v: v2, cell: wsT.getCell(r2, c) }; }
-        return { v: null, cell: wsT.getCell(r2, f.col) };
-      }
-      function colorDe(r2, f) {
-        for (var c = f.col; c <= f.fin; c++) { var id = colorId(argb(wsT.getCell(r2, c)), leyenda); if (id) return id; }
-        return null;
-      }
-      function texto(x) { return x.v == null ? null : limpio(x.v); }
-
-      // ── listas de prácticos (turno y guardia Rosario) ──
-      function listaPracticos(id, destino) {
-        var b = bloque(id); if (!b) return;
-        var h = encabezado(b, ['PRACTICO', 'FECHA E/T', 'HORA']); if (!h) return;
-        var pos = 0, repetidos = {};
-        for (var r2 = h.fila + 1; r2 <= b.fin; r2++) {
-          pos++;
-          var p = leer(r2, h.f['PRACTICO']);
-          if (p.v == null) continue;
-          var nombre = limpio(p.v), fecha = leer(r2, h.f['FECHA E/T']), hora = leer(r2, h.f['HORA']);
-          var fE = aFecha(fecha.v), hE = aHora(hora.v);
-          if (fecha.v != null && !fE) aviso('aviso', 'TURNO', fecha.cell.address, 'fecha_invalida', 'Fecha que no entiendo: "' + fecha.v + '" (' + nombre + ')');
-          if (hE === null) { aviso('aviso', 'TURNO', hora.cell.address, 'hora_invalida', 'Hora que no entiendo: "' + hora.v + '" (' + nombre + ')'); hE = { hora: null, franja: null }; }
-          var marca = h.f['☎'] ? leer(r2, h.f['☎']) : { v: null };
-          var m = marca.v == null ? null : limpio(marca.v).toUpperCase();
-          if (m && m !== '*' && m !== 'X') { aviso('aviso', 'TURNO', marca.cell && marca.cell.address, 'marca_invalida', 'Marca ☎ rara: "' + m + '" (' + nombre + ')'); m = null; }
-          if (repetidos[norm(nombre)]) aviso('aviso', 'TURNO', p.cell.address, 'repetido', nombre + ' aparece más de una vez en ' + id + '.');
-          repetidos[norm(nombre)] = 1;
-          if (!esPropio(nombre)) aviso('info', 'TURNO', p.cell.address, 'fuera_de_catalogo', nombre + ' no está en el catálogo de prácticos propios.');
-          var obs = h.f['OBSERVACION'] ? texto(leer(r2, h.f['OBSERVACION'])) : null;
-          destino.push({
-            pos: pos, practico: nombre, marca: m,
-            entrada: fE ? fE + (hE.hora ? 'T' + hE.hora : '') : null,
-            fecha: fE, hora: hE.hora, observacion: obs,
-            estado: colorDe(r2, h.f['PRACTICO']), fila: r2
-          });
-        }
-      }
-      listaPracticos('turno', out.turno);
-      listaPracticos('rosario', out.guardiaRosario);
-
-      // ── buques en viaje ──
-      function punto(x, hoja2) {
-        if (x.v == null) return null;
-        var s = limpio(x.v);
-        var m = s.match(/^([A-Za-zÁÉÍÓÚÑáéíóúñ.\s]+?)\s*:?\s*(\d{1,2})\/(\d{1,2}):(\d{2})$/);
-        if (m) {
-          var cod = codigoPuerto(m[1]);
-          if (!cod) aviso('aviso', hoja2, x.cell.address, 'puerto_desconocido', 'Puerto que no conozco: "' + m[1].trim() + '"');
-          var iso = resolverDia(+m[2], +m[3], +m[4], refFecha);
-          return { raw: s, puerto: cod, puertoTexto: m[1].trim(), cuando: iso };
-        }
-        if (/\d/.test(s)) {
-          aviso('aviso', hoja2, x.cell.address, 'formato_no_reconocido', 'No entiendo "' + s + '" (esperaba PUERTO dd/hh:mm).');
-          return { raw: s, puerto: null, cuando: null };
-        }
-        return { raw: s, puerto: codigoPuerto(s), cuando: null }; // solo un destino, sin hora
-      }
-      var CANALES = ['CEM', 'CMG', 'RPG', 'RPB', 'RPP', 'RPA'];
-      function viajes(id, destino) {
-        var b = bloque(id); if (!b) return;
-        var h = encabezado(b, ['SERVICIO', 'BUQUE', 'PRACTICO 1', 'PRACTICO 2', 'PUERTO E INICIO', 'DESEMBARCO 1', 'DESEMBARCO 2']);
-        if (!h) return;
-        // Dos formatos: todo en un texto ("SL 01/09:50") o en tres celdas (puerto | FECHA | HORA).
-        function leerPunto(r2, f) {
-          var s1 = norm(raw(wsT.getCell(h.fila, f.col + 1)) || ''), s2 = norm(raw(wsT.getCell(h.fila, f.col + 2)) || '');
-          if (s1 !== 'FECHA' || s2 !== 'HORA') return punto(leer(r2, f), 'TURNO');
-          var p = wsT.getCell(r2, f.col), d = wsT.getCell(r2, f.col + 1), t = wsT.getCell(r2, f.col + 2);
-          var pv = raw(p), dv = raw(d), tv = raw(t);
-          if (pv == null && dv == null && tv == null) return null;
-          pv = pv == null ? null : limpio(pv);
-          var fe = aFecha(dv), ho = aHora(tv);
-          if (dv != null && !fe) aviso('aviso', 'TURNO', d.address, 'fecha_invalida', 'Fecha que no entiendo: "' + dv + '"');
-          if (tv != null && ho === null) { aviso('aviso', 'TURNO', t.address, 'hora_invalida', 'Hora que no entiendo: "' + tv + '"'); }
-          ho = ho || { hora: null, franja: null };
-          var cod = pv ? codigoPuerto(pv) : null;
-          if (pv && pv !== '?' && !cod) aviso('aviso', 'TURNO', p.address, 'puerto_desconocido', 'Puerto que no conozco: "' + pv + '"');
-          if (ho.hora && !fe) aviso('aviso', 'TURNO', d.address, 'falta_fecha', 'Hay hora pero falta la fecha (' + (pv || p.address) + ').');
-          if (fe && refFecha && Math.abs(Date.parse(fe) - Date.parse(refFecha)) > 20 * 86400000)
-            aviso('aviso', 'TURNO', d.address, 'fecha_lejana', 'La fecha ' + fe + ' queda lejos de la guardia (' + refFecha + '): ¿día o mes mal puesto?');
-          return { raw: [pv, fe, ho.hora].filter(Boolean).join(' '), puerto: cod, puertoTexto: pv, pendiente: pv === '?',
-                   cuando: fe ? fe + (ho.hora ? 'T' + ho.hora : '') : null };
-        }
-        for (var r2 = h.fila + 1; r2 <= b.fin; r2++) {
-          var sv = leer(r2, h.f['SERVICIO']), bq = leer(r2, h.f['BUQUE']);
-          if (sv.v == null && bq.v == null) continue;
-          var servicio = sv.v == null ? null : String(sv.v).replace(/\.0$/, '');
-          var p1 = texto(leer(r2, h.f['PRACTICO 1'])), p2 = texto(leer(r2, h.f['PRACTICO 2']));
-          [p1, p2].forEach(function (p) { if (p && !esPropio(p)) aviso('info', 'TURNO', 'fila ' + r2, 'cobertura', p + ' no es de MULTIPAR (cobertura) — buque ' + (bq.v || servicio)); });
-          var cal = h.f['CALADO'] ? leer(r2, h.f['CALADO']) : { v: null }, calado = null;
-          if (cal.v != null) {
-            calado = typeof cal.v === 'number' ? cal.v : Number(String(cal.v).replace(',', '.'));
-            if (isNaN(calado)) { aviso('aviso', 'TURNO', cal.cell.address, 'calado_invalido', 'Calado que no entiendo: "' + cal.v + '"'); calado = null; }
-          }
-          var can = h.f['CANAL'] ? texto(leer(r2, h.f['CANAL'])) : null;
-          if (can && CANALES.indexOf(can.toUpperCase()) < 0) aviso('aviso', 'TURNO', 'fila ' + r2, 'canal_invalido', 'Canal fuera de la lista: "' + can + '"');
-          var reg = {
-            bloque: id, servicio: servicio, buque: texto(bq),
-            practico1: p1, practico2: p2, calado: calado, canal: can,
-            inicio: leerPunto(r2, h.f['PUERTO E INICIO']),
-            desembarco1: leerPunto(r2, h.f['DESEMBARCO 1']),
-            desembarco2: leerPunto(r2, h.f['DESEMBARCO 2']),
-            observaciones: h.f['OBSERVACIONES'] ? texto(leer(r2, h.f['OBSERVACIONES'])) : null,
-            colores: {
-              buque: colorDe(r2, h.f['BUQUE']), practico1: colorDe(r2, h.f['PRACTICO 1']),
-              practico2: colorDe(r2, h.f['PRACTICO 2']), calado: h.f['CALADO'] ? colorDe(r2, h.f['CALADO']) : null
-            },
-            ejemplo: !!(servicio && /^99\d{3}$/.test(servicio)), fila: r2
-          };
-          destino.push(reg);
-          if (servicio) {
-            out.servicios[servicio] = out.servicios[servicio] || { viajes: [], programacion: [] };
-            out.servicios[servicio].viajes.push({ bloque: id, fila: r2 });
-          }
-        }
-      }
-      viajes('aRosario', out.viajes.aRosario);
-      viajes('deRosario', out.viajes.deRosario);
-      viajes('aCampana', out.viajes.aCampana);
-      viajes('deCampana', out.viajes.deCampana);
-      viajes('movimientos', out.viajes.movimientos);
-    }
-
-    // ── FRANCOS ──
-    var wsF = hoja('FRANCOS');
-    if (wsF) {
-      var seccion = 'enFranco', hdr = null;
-      for (var rf = 1; rf <= wsF.rowCount; rf++) {
-        var a1 = raw(wsF.getCell(rf, 1)), ta1 = typeof a1 === 'string' ? norm(a1) : '';
-        if (ta1.indexOf('FUERA DE TURNO') === 0) { seccion = 'fueraDeTurno'; hdr = null; continue; }
-        if (ta1.indexOf('LICENCIAS SOLICITADAS') === 0) { seccion = 'licencias'; hdr = null; continue; }
-        if (ta1 === 'NRO') { hdr = rf; continue; }
-        if (seccion === 'licencias') { if (typeof a1 === 'string' && ta1.indexOf('LISTADO') !== 0) out.francos.licencias.push(a1); continue; }
-        if (!hdr) continue;
-        var pr = raw(wsF.getCell(rf, 3)); if (pr == null) continue;
-        var nombreF = limpio(pr);
-        var d1 = aFecha(raw(wsF.getCell(rf, 4))), h1 = aHora(raw(wsF.getCell(rf, 5)));
-        var d2 = aFecha(raw(wsF.getCell(rf, 6))), h2 = aHora(raw(wsF.getCell(rf, 7)));
-        var obsF = raw(wsF.getCell(rf, 8));
-        if (!d1) aviso('aviso', 'FRANCOS', 'D' + rf, 'fecha_invalida', 'Fecha de salida que no entiendo (' + nombreF + ')');
-        if (seccion === 'enFranco' && !d2) aviso('aviso', 'FRANCOS', 'F' + rf, 'fecha_invalida', 'Falta fecha de ingreso (' + nombreF + ')');
-        if (seccion === 'enFranco' && !esPropio(nombreF)) aviso('info', 'FRANCOS', 'C' + rf, 'fuera_de_catalogo', nombreF + ' no está en el catálogo.');
-        out.francos[seccion].push({
-          practico: nombreF,
-          salida: d1 ? d1 + (h1 && h1.hora ? 'T' + h1.hora : '') : null,
-          ingreso: d2 ? d2 + (h2 && h2.hora ? 'T' + h2.hora : '') : null,
-          observacion: obsF == null ? null : limpio(obsF), fila: rf
-        });
-      }
-      // cruces útiles
-      var enTurno = {}; out.turno.concat(out.guardiaRosario).forEach(function (t) { enTurno[norm(t.practico)] = 1; });
-      out.francos.enFranco.forEach(function (f) {
-        if (enTurno[norm(f.practico)]) aviso('aviso', 'FRANCOS', 'C' + f.fila, 'franco_y_turno', f.practico + ' figura de franco y también en el turno.');
-      });
-    }
-
-    // ── programación: SUBIDAS / BAJADAS / CAMPANA ──
-    var MESES = { ENERO: 1, FEBRERO: 2, MARZO: 3, ABRIL: 4, MAYO: 5, JUNIO: 6, JULIO: 7, AGOSTO: 8, SEPTIEMBRE: 9, SETIEMBRE: 9, OCTUBRE: 10, NOVIEMBRE: 11, DICIEMBRE: 12 };
-    function programacion(nombre, clave) {
-      var ws = hoja(nombre); if (!ws) return;
-      var NC2 = Math.max(ws.columnCount, 15), hr = null;
-      for (var r2 = 1; r2 <= Math.min(10, ws.rowCount) && !hr; r2++)
-        for (var c = 1; c <= NC2; c++) if (norm(raw(ws.getCell(r2, c)) || '') === 'AGENCIA') { hr = r2; break; }
-      if (!hr) { aviso('error', nombre, null, 'encabezado_faltante', 'No encuentro el encabezado (columna AGENCIA).'); return; }
-      var col = {};
-      for (var c2 = 1; c2 <= NC2; c2++) {
-        var tx = norm(raw(ws.getCell(hr, c2)) || '');
-        if (tx && !col[tx]) col[tx] = c2;
-      }
-      var colETA = col['Z.C. // ETD'] || col['CONFIRMADO'];
-      var obligatorias = { SERVICIO: col['SERVICIO'], BUQUE: col['BUQUE'], 'RECALADA / PREG.': col['RECALADA / PREG.'], ETA: colETA, DESDE: col['DESDE'], HASTA: col['HASTA'], AUTORIZADO: col['AUTORIZADO'] };
-      var falt = Object.keys(obligatorias).filter(function (k) { return !obligatorias[k]; });
-      if (falt.length) { aviso('error', nombre, 'fila ' + hr, 'encabezado_faltante', 'Faltan columnas: ' + falt.join(', ')); return; }
-      var sub = norm(raw(ws.getCell(hr + 1, col['RECALADA / PREG.'])) || '') + '/' + norm(raw(ws.getCell(hr + 1, col['RECALADA / PREG.'] + 1)) || '');
-      if (sub !== 'FECHA/HORA') aviso('aviso', nombre, 'fila ' + (hr + 1), 'subencabezado', 'Esperaba FECHA / HORA bajo RECALADA y veo "' + sub + '".');
-      var colMarca = col['☎'] || 1;
-
-      var info = { publicado: null, buques: [], coefPromedioPlanilla: null, coefPromedio: null };
-      var tit = String(raw(ws.getCell(2, 1)) || '');
-      var mt = norm(tit).match(/(\d{1,2}) DE ([A-Z]+) DE (\d{4})/), mh = tit.match(/(\d{1,2}):(\d{2})/);
-      if (mt && MESES[mt[2]]) info.publicado = mt[3] + '-' + pad(MESES[mt[2]]) + '-' + pad(+mt[1]) + (mh ? 'T' + pad(+mh[1]) + ':' + mh[2] : '');
-      else aviso('aviso', nombre, 'A2', 'titulo_sin_fecha', 'No pude leer la fecha de publicación del título.');
-
-      function fechaHora(r3, cF, tag) {
-        var fv = raw(ws.getCell(r3, cF)), hv = raw(ws.getCell(r3, cF + 1));
-        var f = aFecha(fv), h = aHora(hv);
-        if (fv != null && !f) aviso('aviso', nombre, ws.getCell(r3, cF).address, 'fecha_invalida', tag + ': fecha que no entiendo "' + fv + '"');
-        if (h === null) { aviso('aviso', nombre, ws.getCell(r3, cF + 1).address, 'hora_invalida', tag + ': hora que no entiendo "' + hv + '"'); h = { hora: null, franja: null }; }
-        return { fecha: f, hora: h.hora, franja: h.franja };
-      }
-      function txt(r3, c3) { var v3 = raw(ws.getCell(r3, c3)); return v3 == null ? null : limpio(v3); }
-      function num(r3, c3, tag) {
-        var v3 = raw(ws.getCell(r3, c3)); if (v3 == null) return null;
-        var n3 = typeof v3 === 'number' ? v3 : Number(String(v3).replace(',', '.'));
-        if (isNaN(n3)) { aviso('aviso', nombre, ws.getCell(r3, c3).address, 'numero_invalido', tag + ': no es un número "' + v3 + '"'); return null; }
-        return n3;
-      }
-      for (var r3 = hr + 2; r3 <= ws.rowCount; r3++) {
-        var fila = [];
-        for (var c3 = 1; c3 <= 6; c3++) fila.push(norm(raw(ws.getCell(r3, c3)) || ''));
-        if (fila.join(' ').indexOf('COEF. PROMEDIO') >= 0) {
-          info.coefPromedioPlanilla = col['COEF.'] ? num(r3, col['COEF.'], 'coef. promedio') : null;
-          break;
-        }
-        if (fila.some(function (t) { return t.indexOf('REFERENCIAS') === 0; })) break;
-        var sv = raw(ws.getCell(r3, col['SERVICIO'])), bq = raw(ws.getCell(r3, col['BUQUE']));
-        if (sv == null && bq == null) continue;
-        var servicio = sv == null ? null : String(sv).replace(/\.0$/, '');
-        var mk = raw(ws.getCell(r3, colMarca)), marca = mk == null ? null : limpio(mk).toUpperCase();
-        if (marca && marca !== '*' && marca !== 'X') { aviso('aviso', nombre, ws.getCell(r3, colMarca).address, 'marca_invalida', 'Marca ☎ rara: "' + marca + '"'); marca = null; }
-        var aut = txt(r3, col['AUTORIZADO']), autN = aut ? aut.toUpperCase() : null;
-        if (autN && autN !== 'SI' && autN !== 'NO') aviso('info', nombre, ws.getCell(r3, col['AUTORIZADO']).address, 'autorizado_dudoso', 'AUTORIZADO = "' + aut + '" (' + (bq || servicio) + ')');
-        var desde = txt(r3, col['DESDE']), hasta = txt(r3, col['HASTA']);
-        [['DESDE', desde], ['HASTA', hasta]].forEach(function (p) {
-          if (p[1] && p[1] !== '?' && !codigoPuerto(p[1])) aviso('aviso', nombre, ws.getCell(r3, col[p[0]]).address, 'puerto_desconocido', 'Puerto que no conozco en ' + p[0] + ': "' + p[1] + '"');
-        });
-        var colores = null;
-        for (var cx = 1; cx <= NC2 && !colores; cx++) { var idc = colorId(argb(ws.getCell(r3, cx)), leyenda); if (idc) colores = idc; }
-        var reg = {
-          hoja: nombre, marca: marca, agencia: txt(r3, col['AGENCIA']), servicio: servicio, buque: bq == null ? null : limpio(bq),
-          coef: col['COEF.'] ? num(r3, col['COEF.'], 'coef.') : null, calado: col['CALADO'] ? num(r3, col['CALADO'], 'calado') : null,
-          recalada: fechaHora(r3, col['RECALADA / PREG.'], 'recalada'),
-          eta: fechaHora(r3, colETA, clave === 'campana' ? 'confirmado' : 'ETD'),
-          desde: desde, hasta: hasta, desdeCod: codigoPuerto(desde), hastaCod: codigoPuerto(hasta),
-          desdePendiente: esPend(desde), hastaPendiente: esPend(hasta), // "?" = destino a confirmar
-          autorizado: autN, terminal: txt(r3, col['TERMINAL']), observaciones: txt(r3, col['OBSERVACIONES']),
-          estado: colores, fila: r3
-        };
-        info.buques.push(reg);
-        if (servicio) {
-          out.servicios[servicio] = out.servicios[servicio] || { viajes: [], programacion: [] };
-          out.servicios[servicio].programacion.push({ hoja: nombre, fila: r3 });
-        }
-      }
-      var cs = info.buques.map(function (b) { return b.coef; }).filter(function (x) { return typeof x === 'number'; });
-      info.coefPromedio = cs.length ? Math.round(cs.reduce(function (a, b) { return a + b; }, 0) / cs.length * 10) / 10 : null;
-      if (info.publicado && refFecha && info.publicado.slice(0, 10) < refFecha)
-        aviso('aviso', nombre, 'A2', 'programacion_vieja', 'La programación está publicada el ' + info.publicado.replace('T', ' ') + ', anterior a la guardia del ' + refFecha + '.');
-      out.programacion[clave] = info;
-    }
-    programacion('SUBIDAS', 'subidas');
-    programacion('BAJADAS', 'bajadas');
-    programacion('CAMPANA', 'campana');
-
-    return out;
-  }
-
-  // Algunos programas guardan las imágenes (el logo del encabezado) con un formato interno
-  // que ExcelJS no entiende y se cae. Las imágenes no sirven para leer la guardia:
-  // si pasa, se vacían los dibujos y se reintenta (necesita JSZip).
-  var DIBUJO_VACIO = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"' +
-    ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>';
-
-  async function cargar(ExcelJS, datos) {
-    var wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(datos);
-    return wb;
-  }
-
-  async function leerGuardia(ExcelJS, datos, JSZipOpcional) {
-    var wb, avisoDibujos = false;
-    try {
-      wb = await cargar(ExcelJS, datos);
-    } catch (e) {
-      var Z = JSZipOpcional || (typeof self !== 'undefined' && self.JSZip) || null;
-      if (!Z) throw e;
-      var zip = await Z.loadAsync(datos);
-      zip.file(/^xl\/drawings\/drawing\d+\.xml$/).forEach(function (f) { zip.file(f.name, DIBUJO_VACIO); });
-      var hojas = zip.file(/^xl\/worksheets\/sheet\d+\.xml$/);
-      for (var i = 0; i < hojas.length; i++) { // las "tablas" de Excel (hoja de novedades) tampoco se usan
-        var xml = await hojas[i].async('string');
-        zip.file(hojas[i].name, xml.replace(/<tableParts[\s\S]*?<\/tableParts>/g, ''));
-      }
-      wb = await cargar(ExcelJS, await zip.generateAsync({ type: 'uint8array' }));
-      avisoDibujos = true;
-    }
-    var out = parseGuardia(wb);
-    if (avisoDibujos) out.avisos.push({ nivel: 'info', hoja: '(archivo)', celda: null, tipo: 'imagenes_ignoradas', mensaje: 'El archivo trae imágenes y tablas en un formato que no se lee; se ignoraron (no afectan los datos).' });
-    return out;
-  }
-
-  return { VERSION: VERSION, parseGuardia: parseGuardia, leerGuardia: leerGuardia, codigoPuerto: codigoPuerto };
-});
-
-</script>
-<script>
-(function () {
-  var salida = document.getElementById('salida'), ultimo = null;
-
-  function h(tag, attrs, hijos) {
-    var e = document.createElement(tag);
-    Object.keys(attrs || {}).forEach(function (k) { if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); });
-    [].concat(hijos == null ? [] : hijos).forEach(function (c) { e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-    return e;
-  }
-  function cuando(iso) { if (!iso) return ''; var m = iso.match(/^\d{4}-(\d\d)-(\d\d)(?:T(\d\d:\d\d))?/); return m ? m[2] + '/' + m[1] + (m[3] ? ' ' + m[3] : '') : iso; }
-  function fh(o) { if (!o || !o.fecha) return '?'; var f = o.fecha.slice(8) + '/' + o.fecha.slice(5, 7); return f + ' ' + (o.hora || o.franja || ''); }
-  function pto(p) { return p ? (p.puerto || p.raw) + (p.cuando ? ' ' + cuando(p.cuando) : '') : ''; }
-  function tag(t) { return t ? h('span', { class: 'tag' }, t.replace(/_/g, ' ')) : ''; }
-  function seccion(titulo) { salida.appendChild(h('h2', {}, titulo)); }
-
-  function mostrar(d) {
-    salida.innerHTML = '';
-    var g = d.guardia || {};
-    seccion('Guardia');
-    salida.appendChild(h('div', { class: 'card' }, [
-      h('div', {}, cuando(g.fechaInicio + 'T' + (g.horaInicio || '')) + '  →  ' + cuando(g.fechaFin + 'T' + (g.horaFin || ''))),
-      h('div', { class: 'mut' }, 'Operador: ' + (g.operador || '?') + ' · Coordinador: ' + (g.coordinador || '?'))
-    ]));
-
-    var errs = d.avisos.filter(function (a) { return a.nivel === 'error'; }).length;
-    var avs = d.avisos.filter(function (a) { return a.nivel === 'aviso'; }).length;
-    seccion('Avisos (' + errs + ' errores, ' + avs + ' avisos)');
-    var det = h('details', { class: 'card' }, h('summary', {}, d.avisos.length ? 'Ver detalle' : 'Todo en orden'));
-    if (errs) det.setAttribute('open', '');
-    d.avisos.forEach(function (a) {
-      det.appendChild(h('div', { class: 'fila' }, [h('span', { class: a.nivel }, a.hoja + (a.celda ? ' ' + a.celda : '')), h('span', {}, a.mensaje)]));
-    });
-    salida.appendChild(det);
-
-    seccion('Listado en turno (' + d.turno.length + ')');
-    var cT = h('div', { class: 'card' });
-    d.turno.forEach(function (t) {
-      cT.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'n' }, String(t.pos)), h('span', { class: 'nom' }, (t.marca ? t.marca + ' ' : '') + t.practico), h('span', { class: 'mut' }, 'entró ' + cuando(t.entrada)), tag(t.estado)]));
-    });
-    if (!d.turno.length) cT.appendChild(h('div', { class: 'mut' }, 'Sin prácticos en la lista.'));
-    salida.appendChild(cT);
-
-    if (d.guardiaRosario.length) {
-      seccion('Guardia Rosario (' + d.guardiaRosario.length + ')');
-      var cR = h('div', { class: 'card' });
-      d.guardiaRosario.forEach(function (t) { cR.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'nom' }, (t.marca ? t.marca + ' ' : '') + t.practico), h('span', { class: 'mut' }, 'entró ' + cuando(t.entrada))])); });
-      salida.appendChild(cR);
-    }
-
-    var NOM = { aRosario: 'En viaje a Rosario', deRosario: 'En viaje de Rosario', aCampana: 'En viaje a Campana', deCampana: 'En viaje de Campana', movimientos: 'Movimientos' };
-    Object.keys(NOM).forEach(function (k) {
-      var v = d.viajes[k]; seccion(NOM[k] + ' (' + v.length + ')');
-      var c = h('div', { class: 'card' });
-      v.forEach(function (x) {
-        c.appendChild(h('div', { class: 'fila' + (x.ejemplo ? ' ej' : '') }, [
-          h('div', { style: 'flex:1' }, [
-            h('div', { class: 'nom' }, (x.servicio || '') + ' ' + (x.buque || '') + (x.ejemplo ? ' (ejemplo)' : '')),
-            h('div', {}, [x.practico1, x.practico2].filter(Boolean).join(' / ') + (x.calado ? ' · ' + x.calado + ' m' : '') + (x.canal ? ' · ' + x.canal : '')),
-            h('div', { class: 'mut' }, 'Inicio ' + pto(x.inicio) + (x.desembarco1 ? ' · D1 ' + pto(x.desembarco1) : '') + (x.desembarco2 ? ' · D2 ' + pto(x.desembarco2) : ''))
-          ]), tag(x.colores.calado)
-        ]));
-      });
-      if (!v.length) c.appendChild(h('div', { class: 'mut' }, 'Sin buques.'));
-      salida.appendChild(c);
-    });
-
-    var PROG = { subidas: 'Subidas', bajadas: 'Bajadas', campana: 'Campana' };
-    Object.keys(PROG).forEach(function (k) {
-      var p = d.programacion[k]; if (!p) return;
-      seccion('Programación ' + PROG[k] + ' (' + p.buques.length + ')');
-      var c = h('div', { class: 'card' });
-      c.appendChild(h('div', { class: 'mut' }, 'Publicada ' + cuando(p.publicado) + ' · coef. promedio ' + (p.coefPromedio == null ? '—' : p.coefPromedio)));
-      p.buques.forEach(function (b) {
-        c.appendChild(h('div', { class: 'fila' }, [
-          h('span', { class: 'n' }, b.marca || ''),
-          h('div', { style: 'flex:1' }, [
-            h('div', { class: 'nom' }, b.buque + ' · ' + b.servicio),
-            h('div', { class: 'mut' }, (b.desde || '?') + ' → ' + (b.hasta || '?') + ' · recalada ' + fh(b.recalada) + (b.eta && b.eta.fecha ? ' · ETD/conf. ' + fh(b.eta) : '') + (b.autorizado ? ' · aut. ' + b.autorizado : ''))
-          ]), tag(b.estado)
-        ]));
-      });
-      salida.appendChild(c);
-    });
-
-    seccion('Francos (' + d.francos.enFranco.length + ')');
-    var cF = h('div', { class: 'card' });
-    d.francos.enFranco.forEach(function (f) { cF.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'nom' }, f.practico), h('span', { class: 'mut' }, 'vuelve ' + cuando(f.ingreso))])); });
-    d.francos.fueraDeTurno.forEach(function (f) { cF.appendChild(h('div', { class: 'fila' }, [h('span', { class: 'nom' }, f.practico + ' (fuera de turno)'), h('span', { class: 'mut' }, f.observacion || '')])); });
-    salida.appendChild(cF);
-
-    var b = h('button', { class: 'sec', type: 'button' }, 'Descargar lectura (JSON)');
-    b.onclick = function () {
-      var url = URL.createObjectURL(new Blob([JSON.stringify(ultimo, null, 1)], { type: 'application/json' }));
-      var a = h('a', { href: url, download: 'guardia-leida.json' }); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    };
-    salida.appendChild(b);
-  }
-
-  function leerLocal(k, v) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
-  function guardarLocal(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  function aBytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
-  function error(msg) { salida.innerHTML = ''; salida.appendChild(h('div', { class: 'card err' }, msg)); }
-  function cuandoLocal(iso) { var d = new Date(iso); return d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); }
-
-  async function procesar(buf, nombre) {
-    ultimo = await GuardiaReader.leerGuardia(ExcelJS, buf);
-    mostrar(ultimo);
-  }
-
-  document.getElementById('archivo').addEventListener('change', async function (ev) {
-    var f = ev.target.files[0]; if (!f) return;
-    salida.innerHTML = ''; salida.appendChild(h('p', { class: 'mut' }, 'Leyendo ' + f.name + '…'));
-    try { await procesar(await f.arrayBuffer(), f.name); }
-    catch (e) { error('No pude leer el archivo: ' + (e && e.message ? e.message : e)); }
-  });
-
-  // ── lectura en vivo desde Drive (Apps Script) ──
-  var API = window.GUARDIA_API_URL;
-  if (API) {
-    var vivo = document.getElementById('vivo'), estado = document.getElementById('estado'), pedir = document.getElementById('pedirClave');
-    var inputClave = document.getElementById('clave');
-    vivo.hidden = false;
-    document.getElementById('botonArchivo').style.background = 'transparent';
-    document.getElementById('botonArchivo').style.color = 'var(--az)';
-    document.getElementById('botonArchivo').style.border = '2px solid var(--az)';
-
-    async function traer() {
-      var clave = leerLocal('mp_clave');
-      if (!clave) { pedir.hidden = false; estado.textContent = 'Escribí la clave para leer la guardia.'; return; }
-      pedir.hidden = true; estado.textContent = 'Leyendo desde Drive…';
-      try {
-        var r = await fetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'clave=' + encodeURIComponent(clave), { cache: 'no-store' });
-        var d = await r.json();
-        if (d.error) {
-          if (/autorizado/i.test(d.error)) { guardarLocal('mp_clave', ''); pedir.hidden = false; estado.textContent = 'Clave incorrecta.'; return; }
-          throw new Error(d.error);
-        }
-        await procesar(aBytes(d.xlsx), d.nombre);
-        estado.textContent = d.nombre + ' · guardado en Drive ' + cuandoLocal(d.modificado) + ' · leído ' + cuandoLocal(d.consultado);
-      } catch (e) {
-        estado.textContent = '';
-        error('No pude leer desde Drive: ' + (e && e.message ? e.message : e) + '. Podés elegir el archivo a mano.');
-      }
-    }
-    document.getElementById('entrar').addEventListener('click', function () { guardarLocal('mp_clave', inputClave.value); traer(); });
-    inputClave.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { guardarLocal('mp_clave', inputClave.value); traer(); } });
-    document.getElementById('actualizar').addEventListener('click', traer);
-    traer();   // al abrir la página, lee solo
-  }
-})();
-</script>
+<script src="assets/guardia-reader.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/data-loader.js"></script>
 </body>
 </html>

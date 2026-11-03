@@ -1,7 +1,7 @@
 // Simula la lectura en vivo: Apps Script falso que devuelve el xlsx en base64.  Uso: node probar-vivo.js archivo.xlsx
 const {JSDOM}=require('jsdom'),fs=require('fs');
 const buf=fs.readFileSync(process.argv[2]);
-const html=fs.readFileSync('../index.html','utf8').replace(/<script src="[^"]+"><\/script>/g,'');
+const html=fs.readFileSync('../lector.html','utf8').replace(/<script src="[^"]+"><\/script>/g,'');
 const dom=new JSDOM(html,{runScripts:'outside-only',pretendToBeVisual:true,url:'https://x.github.io/'});
 const w=dom.window; w.ExcelJS=require('exceljs'); w.JSZip=require('jszip'); w.GUARDIA_API_URL='https://script.example/exec';
 let llamadas=[];

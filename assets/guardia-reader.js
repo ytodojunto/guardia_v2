@@ -521,6 +521,60 @@
     programacion('BAJADAS', 'bajadas');
     programacion('CAMPANA', 'campana');
 
+    // ── NOVEDADES OPERATIVAS (fecha | informó | novedad; una novedad puede seguir en filas siguientes con solo el texto) ──
+    out.novedades = [];
+    var wsN = hoja('NOVEDADES OPERATIVAS');
+    if (wsN) {
+      var ultimaNov = null;
+      for (var rn = 2; rn <= wsN.rowCount; rn++) {
+        var fN = raw(wsN.getCell(rn, 1)), aN = raw(wsN.getCell(rn, 2)), tN = raw(wsN.getCell(rn, 3));
+        if (fN == null && aN == null && tN == null) continue;
+        if (fN == null && aN == null && ultimaNov) { ultimaNov.texto += '\n' + limpio(tN); continue; }
+        ultimaNov = { fecha: esFecha(fN) ? ymd(fN) : (fN == null ? null : limpio(fN)), autor: aN == null ? null : limpio(aN), texto: tN == null ? '' : limpio(tN), fila: rn };
+        out.novedades.push(ultimaNov);
+      }
+    }
+
+    // ── GUARDIA REMISES: dos bloques lado a lado (07 a 19 desde la columna A, 19 a 07 desde la E) ──
+    out.remises = null;
+    var wsR = hoja('GUARDIA REMISES');
+    if (wsR) {
+      var bloqueRem = function (c0) {
+        var b = { titulo: null, fecha: null, remiseros: [], otros: [], novedades: [] }, sec = 'rem';
+        var t0 = raw(wsR.getCell(1, c0)); b.titulo = t0 == null ? null : limpio(t0);
+        var f0 = raw(wsR.getCell(2, c0 + 1)); b.fecha = esFecha(f0) ? ymd(f0) : null;
+        for (var rr2 = 4; rr2 <= wsR.rowCount; rr2++) {
+          var a0 = raw(wsR.getCell(rr2, c0)), ta0 = typeof a0 === 'string' ? norm(a0) : '';
+          if (ta0.indexOf('FRANCO') === 0) { sec = 'otros'; continue; }
+          if (ta0 === 'NOVEDADES') { sec = 'nov'; continue; }
+          if (sec === 'nov') { if (a0 != null) b.novedades.push(limpio(a0)); continue; }
+          var nm = raw(wsR.getCell(rr2, c0 + 1)), ob = raw(wsR.getCell(rr2, c0 + 2));
+          if (nm == null) continue;
+          var reg2 = { ord: typeof a0 === 'number' ? a0 : null, nombre: limpio(nm), observacion: ob == null ? null : limpio(ob) };
+          (sec === 'rem' ? b.remiseros : b.otros).push(reg2);
+        }
+        return b;
+      };
+      out.remises = { turno1: bloqueRem(1), turno2: bloqueRem(5) };
+    }
+
+    // ── TELEFONOS de las lanchas (puerto | teléfonos) y enlaces útiles ──
+    out.telefonos = []; out.enlaces = [];
+    var wsTel = hoja('TELEFONOS');
+    if (wsTel) {
+      for (var rt = 2; rt <= wsTel.rowCount; rt++) {
+        var pT = raw(wsTel.getCell(rt, 1)); if (pT == null) continue;
+        if (/^https?:/i.test(String(pT))) {
+          var dsc = raw(wsTel.getCell(rt + 1, 1));
+          out.enlaces.push({ url: String(pT).trim(), descripcion: dsc != null && !/^https?:/i.test(String(dsc)) ? limpio(dsc) : null });
+          continue;
+        }
+        var partes = [];
+        for (var ct = 2; ct <= Math.max(wsTel.columnCount, 12); ct++) { var vt = raw(wsTel.getCell(rt, ct)); if (vt != null) partes.push(limpio(vt)); }
+        if (partes.length) out.telefonos.push({ puerto: limpio(pT), telefono: partes.join(' · ') });
+      }
+    }
+
     return out;
   }
 
