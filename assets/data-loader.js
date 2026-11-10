@@ -131,7 +131,7 @@
     var G = g.guardia;
     return { turno: turno, previstos: previstos, transitos: transitos, novedades: novedades, remises: remises,
              avisos: g.avisos.filter(function (a) { return a.nivel === 'error' || a.tipo === 'fuera_de_turno_y_turno' || a.tipo === 'franco_y_turno' || a.tipo === 'sin_servicio' || a.tipo === 'turno_viaje_distinto' || a.tipo === 'viaje_sin_despacho'; }).map(function (a) { return a.hoja + (a.celda ? ' ' + a.celda : '') + ': ' + a.mensaje; }),
-             encabezado: 'Guardia ' + dmh(G.fechaInicio + 'T' + (G.horaInicio || '')) + ' → ' + dmh(G.fechaFin + 'T' + (G.horaFin || '')) + (meta ? ' · archivo guardado ' + meta : '') + (window.GUARDIA_VERSION ? ' · ' + window.GUARDIA_VERSION : '') };
+             encabezado: 'Guardia ' + dmh(G.fechaInicio + 'T' + (G.horaInicio || '')) + ' → ' + dmh(G.fechaFin + 'T' + (G.horaFin || '')) + (meta ? ' · planilla guardada ' + meta : '') + ' · leída ' + (function (d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); })(new Date()) + (window.GUARDIA_VERSION ? ' · ' + window.GUARDIA_VERSION : '') };
   }
 
   async function cargarDatos() {
