@@ -66,11 +66,43 @@ resto = movil[hoy_fin:movil.index('<script>')]
 r_ini = resto.index('<div class="card src" style="margin-bottom:0">')
 r_fin = resto.index('</div>', resto.index('<p class="k">Cada práctico vuelve', r_ini)) + 6
 resto = resto[:r_ini] + '<div class="card src" style="margin-bottom:0" id="resumen"></div>\n  <ul class="avis" id="avisosL"></ul>' + resto[r_fin:]
-# tarjeta nueva en Datos
-resto = resto.replace('<h2>De dónde salen los datos</h2>', '''<h2>De dónde salen los datos</h2>
-  <div class="card src"><h3>Ahora: la planilla de la guardia en Drive</h3>
-    <p>Esta pantalla lee la planilla de la guardia (Google Sheets) cada vez que se abre y se actualiza sola cada 5 minutos. De ahí salen el turno, los viajes en curso, los francos y la programación de buques. Si no logra leerla muestra datos de ejemplo y lo avisa arriba.</p>
-    <p class="k">Las tarjetas 1 y 2 de abajo describen la etapa anterior, cuando se cargaba el PDF del sistema y el Excel a mano.</p></div>''', 1)
+# Hoja "Datos": se reescribe para la etapa actual (planilla de Drive). Se conservan las tarjetas de estadística (4 y 5).
+d_ini = resto.index('<section id="datos" hidden>')
+d_fin = resto.index('</section>', d_ini) + len('</section>')
+sec = resto[d_ini:d_fin]
+c4 = sec[sec.index('<div class="card src"><h3>4.'):sec.index('<div class="card src"><h3>5.')]
+c5 = sec[sec.index('<div class="card src"><h3>5.'):sec.index('<div class="card src"><h3>6.')]
+c4 = c4.replace('<h3>4. ', '<h3>3. ')
+c5 = c5.replace('<h3>5. ', '<h3>4. ')
+datos = """<section id="datos" hidden>
+  <h2>De dónde salen los datos</h2>
+
+  <div class="card src"><h3>1. La planilla de la guardia (Google Sheets)</h3>
+    <p>Esta pantalla lee la planilla de la guardia en Drive cada vez que se abre y se actualiza sola cada 5 minutos. No hay que cargar nada. Arriba se ve qué guardia es, cuándo se guardó la planilla y a qué hora se leyó.</p>
+    <ul><li><b>TURNO:</b> la lista de prácticos con su hora de presentación, y los buques en viaje con sus prácticos, calado, canal y horas de inicio y desembarco.</li>
+    <li><b>FRANCOS:</b> quiénes están de franco y hasta cuándo, y quiénes están fuera de turno (enfermo o licencia).</li>
+    <li><b>SUBIDAS, BAJADAS y CAMPANA:</b> los buques programados, con coeficiente, hora de recalada o salida, desde y hasta, y si están autorizados.</li></ul>
+    <p class="k">Si la planilla no se actualiza, la pantalla tampoco: mirá la hora de "planilla guardada" del encabezado. Si no puede leerla, muestra datos de ejemplo y lo avisa arriba.</p></div>
+
+  <div class="card src"><h3>2. Reglas que usa la proyección</h3>
+    <ul><li>Cada práctico vuelve a estar libre a su hora de presentación más 6 h de descanso.</li>
+    <li>Cada barco se llama 5 h antes de su salida, en el orden de la lista.</li>
+    <li>Subida: salen 2. A Rosario, Ramallo, San Nicolás y Arroyo Seco bajan los dos en destino. A San Lorenzo, uno baja en San Nicolás y el otro en San Lorenzo.</li>
+    <li>Bajada: uno baja en Escobar y el otro sigue a Z.C. A Campana desde 8,84 m de calado salen 2 y bajan los dos en Campana; si no, sale 1.</li>
+    <li>Movimientos y tramos cortos (Villa Constitución a Rosario, Rosario a San Lorenzo, San Lorenzo a San Nicolás o a Gral. Lagos): sale 1.</li>
+    <li>Horas de viaje: las tuyas (San Nicolás, San Lorenzo, Rosario, Ramallo) y estimadas para el resto. Se corrigen en la versión completa.</li>
+    <li>Francos 14x14 en dos grupos, con cambio a las 06:00 (11/11, 27/11 y 13/12).</li>
+    <li>Quien sale de la lista, mínimo 24 h y vuelve con el número que tenía. Los que están fuera de turno no entran a la lista.</li></ul></div>
+
+  """ + c4 + c5 + """<div class="card src"><h3>5. Lo que no sabe</h3>
+    <ul><li>Barcos que aparecen en la planilla después de la lectura, o cambios que todavía no se anotaron en ella.</li>
+    <li>Cambios de francos entre colegas fuera del cambio de grupo.</li>
+    <li>La hora real de inicio de cada viaje: la carga el operador cuando el práctico arranca. Sin esa hora, el buque en viaje no se ubica.</li>
+    <li>Viajes sin servicio, sin horarios o con rutas que no están cargadas: no entran a la cuenta y quedan avisados abajo, en Análisis.</li>
+    <li>Cuándo vuelve un práctico que está fuera de turno: la planilla no trae fecha de reingreso.</li>
+    <li>Las notas de las celdas de la planilla: todavía no se leen.</li></ul></div>
+</section>"""
+resto = resto[:d_ini] + datos + resto[d_fin:]
 
 # ── 3. código de la vista: del script de movil, con CALC/VOY como parámetros ──
 sc = movil[movil.index('<script>') + 8:movil.rindex('</script>')]
