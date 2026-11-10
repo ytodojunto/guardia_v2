@@ -279,6 +279,7 @@ html[data-theme="dark"] .buque-obs{color:#c3c9d4;border-top-color:#333c4d}
   <div class="login-box">
     <div class="login-logo"><img src="logo-multipar.png" alt="Multipar S.A." style="height:72px" onerror="this.style.display='none'"></div>
     <div class="login-sub">Guardia — Acceso restringido</div>
+    <div class="login-sub" style="font-size:12px;opacity:.7;margin-top:-6px"><span class="ver"></span></div>
     <form id="loginForm" autocomplete="off">
       <div class="login-field">
         <label>Usuario</label>
@@ -759,5 +760,6 @@ function sortNov(by,btn){
 <script src="assets/config.js"></script>
 <script src="assets/auth.js"></script>
 <script src="assets/data-loader.js"></script>
+<script>document.querySelectorAll(".ver").forEach(function(e){e.textContent=window.GUARDIA_VERSION||""});</script>
 </body>
 </html>

@@ -1,0 +1,2187 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Proyección de guardia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one shared time axis (29/10 12:00 to 31/10 12:00). Coverage curve on top, one row per pilot below, dashed lines mark each despacho call. */
+:root {
+  --bg: #eef2f2; --surface: #ffffff; --surface-2: #f5f8f8;
+  --fg: #14262d; --muted: #566a71; --line: #d3dcdd;
+  --accent: #0b5d73; --accent-fg: #ffffff;
+  --nav: #a9b6ba; --pres: #f1dcae; --rest: #e5b95f; --free: #8fcfa8; --free-fg: #12351f;
+  --asig: #0b5d73; --asig-fg: #ffffff;
+  --ok: #2b7a4b; --warn: #9a5200; --bad: #b3261e;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1a1f; --surface: #152730; --surface-2: #1b313b;
+    --fg: #e5eef0; --muted: #90a6ad; --line: #29414b;
+    --accent: #5cc3dc; --accent-fg: #0a1a20;
+    --nav: #3f555d; --pres: #5d4f2a; --rest: #a97d2a; --free: #2f8a58; --free-fg: #eafaf0;
+    --asig: #5cc3dc; --asig-fg: #0a1a20;
+    --ok: #63c58a; --warn: #e6a64f; --bad: #ff8a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1a1f; --surface: #152730; --surface-2: #1b313b;
+  --fg: #e5eef0; --muted: #90a6ad; --line: #29414b;
+  --accent: #5cc3dc; --accent-fg: #0a1a20;
+  --nav: #3f555d; --pres: #5d4f2a; --rest: #a97d2a; --free: #2f8a58; --free-fg: #eafaf0;
+  --asig: #5cc3dc; --asig-fg: #0a1a20;
+  --ok: #63c58a; --warn: #e6a64f; --bad: #ff8a80;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 18px; line-height: 1.45; }
+.wrap {
+  max-width: 1000px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px;
+}
+h1 { font-family: var(--f-head); font-weight: 600; font-size: 34px; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--f-head); font-weight: 600; font-size: 17px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.head, section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sub { color: var(--muted); margin: 0; max-width: 68ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 16px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.inner { position: relative; }
+.r { display: flex; align-items: stretch; }
+.lab {
+  flex: 0 0 150px; position: sticky; left: 0; z-index: 3; background: var(--surface);
+  border-right: 1px solid var(--line); padding: 0 8px; display: flex; align-items: center;
+  font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lab.sm { font-family: var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-size: 15px; font-weight: 500; }
+.trk { position: relative; flex: 0 0 auto; }
+.axis { height: 48px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.axis .lab { background: var(--surface-2); }
+.tick { position: absolute; bottom: 3px; font: 14px var(--f-mono); color: var(--muted); transform: translateX(-50%); }
+.tick::after { content: ""; position: absolute; left: 50%; top: -6px; height: 4px; border-left: 1px solid var(--line); }
+.day { position: absolute; top: 3px; font: 600 15px var(--f-head); letter-spacing: 0.05em; padding-left: 4px; border-left: 1px solid var(--muted); color: var(--fg); }
+.calls { height: 70px; border-bottom: 1px solid var(--line); }
+.chip {
+  position: absolute; font: 500 14px var(--f-mono); white-space: nowrap; padding: 1px 6px;
+  border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); color: var(--fg);
+}
+.chip.ok { border-color: var(--ok); } .chip.uno { border-color: var(--warn); } .chip.falta { border-color: var(--bad); }
+.chartrow { border-bottom: 1px solid var(--line); }
+.prow { height: 40px; border-bottom: 1px solid var(--line); }
+.prow:last-child { border-bottom: 0; }
+.seg { position: absolute; top: 6px; height: 28px; border-radius: 3px; overflow: hidden; font: 500 14px var(--f-mono); line-height: 28px; padding-left: 8px; white-space: nowrap; }
+.seg.nav { background: var(--nav); } .seg.pres { background: var(--pres); } .seg.rest { background: var(--rest); }
+.seg.free { background: var(--free); color: var(--free-fg); }
+.seg.asig { background: var(--asig); color: var(--asig-fg); }
+.over { position: absolute; top: 0; bottom: 0; left: 150px; pointer-events: none; z-index: 2; }
+.vl { position: absolute; top: 48px; bottom: 0; border-left: 1.5px dashed var(--fg); opacity: 0.55; }
+.vl.now { border-left: 2px solid var(--bad); opacity: 0.8; top: 0; }
+.nowtag { position: absolute; top: 2px; font: 600 14px var(--f-mono); color: var(--bad); background: var(--surface-2); padding: 0 3px; transform: translateX(-50%); }
+
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.card { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 2fr); gap: 4px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.card b { font-weight: 600; }
+.tag { font: 14px var(--f-mono); letter-spacing: 0.06em; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); margin-left: 6px; }
+.mono { font-family: var(--f-mono); font-size: 16px; color: var(--muted); }
+.st { font: 500 15px var(--f-mono); padding: 1px 7px; border-radius: 3px; border: 1px solid; margin-right: 8px; white-space: nowrap; }
+.st.ok { color: var(--ok); border-color: var(--ok); } .st.uno { color: var(--warn); border-color: var(--warn); } .st.falta { color: var(--bad); border-color: var(--bad); }
+.pend { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+.pend input { font: 17px var(--f-mono); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-width: 0; }
+.pend input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pan { display: flex; flex-direction: column; gap: 10px; }
+.verd { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.verd .tx { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.verd .tx b { font: 600 24px var(--f-head); }
+.verd .tx span { color: var(--muted); font-size: 17px; }
+.verd .gd { display: flex; flex-direction: column; gap: 3px; font-size: 15px; color: var(--muted); }
+.verd .gd input { font: 17px var(--f-mono); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.verd .gd input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 18px; display: inline-block; background: var(--nav); }
+.dot.big { width: 60px; height: 60px; flex-basis: 60px; }
+.dot.ok { background: var(--ok); } .dot.uno { background: var(--warn); } .dot.falta { background: var(--bad); } .dot.none { background: var(--nav); }
+.pcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.pl { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pl h3 { margin: 0; font: 600 15px var(--f-head); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.it { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 10px; align-items: start; }
+.it .dot { margin-top: 5px; }
+.it .m { font-size: 17px; overflow-wrap: anywhere; }
+.it .m b { font-weight: 600; }
+.it .m small { display: block; color: var(--muted); font: 15px var(--f-mono); }
+.warnl { color: var(--warn); font-size: 17px; }
+.sg { display: grid; grid-template-columns: 96px repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sg .h { font: 500 14px var(--f-head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.sg .d { font: 600 17px var(--f-head); align-self: center; }
+.sg .c { display: flex; align-items: flex-start; gap: 7px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; font: 15px var(--f-mono); min-width: 0; }
+.sg .c.past { opacity: 0.5; }
+.sg .c .dot { margin-top: 2px; }
+.sg .c span { overflow-wrap: anywhere; }
+.sg .c small { display: block; color: var(--muted); font-size: 14px; }
+.rotc { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.rotc .ttl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.rotc .ttl b { font-weight: 600; }
+.q { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.q .ql { font: 500 14px var(--f-head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); flex: 0 0 72px; }
+.qc { font: 500 15px var(--f-mono); padding: 3px 8px; border-radius: 4px; border: 1px solid transparent; white-space: nowrap; }
+.qc.libre { background: var(--free); color: var(--free-fg); }
+.qc.desc { background: var(--rest); color: var(--fg); }
+.qc.tomado { background: var(--asig); color: var(--asig-fg); }
+.qc.entra { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--muted); }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.pp { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; font-size: 16px; }
+.pp input { width: 72px; font: 17px var(--f-mono); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; text-align: right; }
+.pp input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pp em { font-style: normal; color: var(--muted); font-size: 14px; display: block; }
+.note { color: var(--muted); font-size: 16px; margin: 0; max-width: 72ch; }
+ul.s { margin: 0; padding-left: 18px; color: var(--muted); font-size: 16px; display: flex; flex-direction: column; gap: 3px; max-width: 76ch; }
+.status { font: 15px var(--f-mono); color: var(--warn); }
+@media (max-width: 700px) {
+  .sg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sg .h:first-child { display: none; }
+  .sg .d { grid-column: 1 / -1; margin-top: 6px; }
+  .pcols { grid-template-columns: 1fr; }
+  .pgrid { grid-template-columns: 1fr; }
+  .btn { min-height: 44px; padding: 10px 16px; }
+  .src input, .verd .gd input, .pend input { min-height: 44px; }
+  .card { grid-template-columns: 1fr; }
+  h1 { font-size: 29px; }
+  .lab { flex-basis: 110px; }
+  .over { left: 110px; }
+}
+
+.btn { font: 500 15px var(--f-body); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; min-height: 32px; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.pri { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.src { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.src .l1 { display: flex; align-items: center; gap: 10px; }
+.src .l1 span { font-size: 17px; }
+.src details summary { cursor: pointer; font-size: 16px; color: var(--muted); }
+.src .f { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 8px; }
+.src label { display: flex; flex-direction: column; gap: 3px; font-size: 15px; color: var(--muted); flex: 1 1 240px; min-width: 0; }
+.src label.sm { flex: 0 1 160px; }
+.src input { font: 17px var(--f-mono); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-width: 0; }
+.src input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.verd .gd { align-items: flex-start; }
+.drop { display: flex; flex-direction: column; gap: 3px; border: 2px dashed var(--nav); border-radius: 8px; padding: 14px; cursor: pointer; background: var(--surface-2); flex: initial !important; color: var(--fg) !important; font-size: 18px !important; }
+.drop span { color: var(--muted); font-size: 16px; }
+.drop:hover, .drop.on { border-color: var(--accent); }
+.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.mk { position: absolute; top: 8px; transform: translateX(-50%); z-index: 2; font: 600 14px var(--f-mono); line-height: 20px; padding: 0 6px; border: 1.5px solid var(--fg); border-radius: 11px; background: var(--surface); color: var(--fg); pointer-events: auto; }
+.drop { display: flex; flex-direction: column; gap: 3px; border: 2px dashed var(--nav); border-radius: 8px; padding: 14px; cursor: pointer; background: var(--surface-2); flex: initial !important; color: var(--fg) !important; font-size: 18px !important; }
+.drop span { color: var(--muted); font-size: 16px; }
+.drop:hover, .drop.on { border-color: var(--accent); }
+.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+[hidden] { display: none !important; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 2px solid var(--line); margin: 14px 0 10px; }
+.tabs button { font: 600 15px var(--f-body); color: var(--muted); background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 10px 14px; min-height: 44px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stt { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stt th, .stt td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.stt th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+.stt .num { font-family: var(--f-mono); white-space: nowrap; }
+.stw { overflow-x: auto; }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <a href="index.html" style="font-size:16px;color:var(--accent)">← Volver a la guardia</a>
+    <h1>Proyección de guardia</h1>
+    <p class="sub" id="sub"></p>
+  </div>
+
+  <div class="src">
+    <div class="l1"><i class="dot" id="srcdot"></i><span id="srcst"></span></div>
+    <label class="drop" id="drop" hidden>
+      <input id="xlfile" type="file" accept=".xlsx,.xlsm,.xls,.pdf">
+      <b>Cargar la guardia (Excel o PDF)</b>
+      <span>Arrastralo acá o tocá para elegirlo. Se lee en tu equipo, sin cuentas.</span>
+    </label>
+    <div class="status" id="srcmsg" role="status"></div>
+    <details hidden>
+      <summary>Otras fuentes</summary>
+      <div class="f">
+        <label class="sm">Clave de la guardia<input id="apiclave" type="password" autocomplete="off"></label>
+        <button class="btn pri" id="btnlive" type="button">Leer la guardia web</button>
+        <button class="btn" id="btndemo" type="button">Datos de ejemplo</button>
+      </div>
+      <div class="f"><label>URL del script de la guardia<input id="apiurl" type="url" autocomplete="off"></label></div>
+    </details>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Secciones">
+    <button type="button" role="tab" id="tb-proy" aria-selected="true" aria-controls="tab-proy">Proyección</button>
+    <button type="button" role="tab" id="tb-voy" aria-selected="false" aria-controls="tab-voy">¿Voy a estar?</button>
+    <button type="button" role="tab" id="tb-stats" aria-selected="false" aria-controls="tab-stats">Estadísticas de terminales</button>
+  </div>
+  <div id="tab-proy" role="tabpanel" aria-labelledby="tb-proy">
+  <section>
+    <h2>Panorama</h2>
+    <div class="pan" id="pan"></div>
+  </section>
+
+  <section>
+    <h2>Prácticos libres y llamados</h2>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--nav)"></i>Navegando</span>
+      <span><i class="sw" style="background:var(--pres)"></i>Presentación</span>
+      <span><i class="sw" style="background:var(--rest)"></i>Descanso 6 h</span>
+      <span><i class="sw" style="background:var(--free)"></i>Libre</span>
+      <span><i class="sw" style="background:var(--asig)"></i>Asignado a un barco</span>
+      <span><i class="mk" style="position:static;transform:none;display:inline-block">#n</i>Entra a la cola en ese lugar</span>
+    </div>
+    <div class="scroll"><div class="inner" id="inner"></div></div>
+  </section>
+
+  <section>
+    <h2>Rotación del turno</h2>
+    <p class="note">La lista justo antes de cada llamado. Arriba los que ya están en la lista, en orden. Los que bajan de un barco entran al final por hora de presentación y aparecen en "Por entrar".</p>
+    <div class="cards" id="rot"></div>
+  </section>
+
+  <section>
+    <h2>Qué pasa con cada barco</h2>
+    <div class="cards" id="res"></div>
+  </section>
+
+  <section id="pendsec">
+    <h2>Barcos sin hora</h2>
+    <p class="note">Cargá la hora de salida (bajada) o de recalada (subida) cuando la pasen. Se guarda en este navegador hasta que la planilla la traiga.</p>
+    <div class="cards" id="pend"></div>
+    <div class="status" id="status" role="status"></div>
+  </section>
+
+  <section>
+    <h2>Tiempos de viaje</h2>
+    <p class="note">En horas desde la presentación a bordo. Los de subida a San Nicolás y San Lorenzo son los tuyos. El resto es estimado: corregilo y la página se recalcula.</p>
+    <div class="pgrid" id="pgrid"></div>
+  </section>
+
+  <section>
+    <h2>Supuestos</h2>
+    <ul class="s">
+      <li>El orden del turno es por hora de presentación (desembarco más Anexo I). Se llama a los dos primeros que ya descansaron, y los que bajan vuelven al final de la lista.</li>
+      <li>En toda bajada uno desembarca en Escobar y el otro en Zona Común. En Campana desembarcan los dos.</li>
+      <li>En subida salen siempre 2. A Arroyo Seco bajan los dos al llegar, y a San Lorenzo uno baja en San Nicolás y el otro en San Lorenzo.</li>
+      <li>Si en una bajada no alcanza, sale 1 y el segundo se incorpora cuando se libera el próximo.</li>
+      <li>En los buques en viaje, el práctico n.º 1 de la fila baja primero (Escobar, Campana o San Nicolás) y el n.º 2 llega hasta el final (Zona Común o San Lorenzo).</li>
+      <li>Francos y enfermos de la hoja GUARDIA no entran a la lista.</li>
+    </ul>
+    <h2 id="avtit" style="margin-top:10px">Avisos de la lectura de la planilla</h2>
+    <ul class="s" id="avisos"></ul>
+  </section>
+  </div>
+  <div id="tab-voy" role="tabpanel" aria-labelledby="tb-voy" hidden>
+    <section><div class="pan" id="voyhost"></div></section>
+  </div>
+  <div id="tab-stats" role="tabpanel" aria-labelledby="tb-stats" hidden>
+    <section><div id="sthost"></div></section>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="assets/guardia-reader.js"></script>
+<script src="assets/config.js"></script>
+  // ── Excel NUEVO de la guardia, leído desde Drive con el lector común (assets/guardia-reader.js) ──
+<script>window.MP_PDFLINES=["Multipar S.A.", "Coodinador: TORRES, GABRIEL", "Operador   que entra: Ezequiel", "Operador   que sale: LEONEL", "Turnos al díaTurnos al día 09/11/2026 07:23:32 pm09/11/2026 07:23:32 pm", "Pos:   Nombre:   Turno:   Est.:   Desc   Obs.:   F.Orden:", ".:", "1   SOTELO, FABRICIO   08-11-2026 03:30   12   08-11-2026 03:30", "2   ROMANO, MARCELO   08-11-2026 10:50   12   08-11-2026 10:50", "3   BAYONES, FERNANDO   08-11-2026 13:01   12   08-11-2026 13:01", "4   VAL, GABRIEL   08-11-2026 16:56   12   08-11-2026 16:56", "5   TORRES, GABRIEL   09-11-2026 06:05   12   09-11-2026 06:05", "6   CUBA, SEBASTIAN   09-11-2026 06:06   12   09-11-2026 06:06", "7   CUBA, EMMANUEL   09-11-2026 17:00   12   09-11-2026 17:00", "Practicos Inactivos", "Nombre:   Desde:   Dde.Hs:   Hasta:   Hta.Hs:   Orden:   Nota:", "FALCON, JORGE   28-10-2026   06:00   11-11-2026   06:00   1   FRANCO", "DE BIASE, LEONARDO   28-10-2026   06:00   11-11-2026   06:00   3   FRANCO", "SLUTZKY, SERGIO   28-10-2026   06:00   11-11-2026   06:00   3   FRANCO", "ROTELA FIORE, CARLOS   28-10-2026   06:00   11-11-2026   06:00   2   FRANCO", "FERRARI, GERMAN   28-10-2026   06:00   11-11-2026   06:00   7   FRANCO", "PASCUAL, GERMAN   28-10-2026   08:45   11-11-2026   08:45   8   FRANCO", "CASANOVA, DIEGO   29-10-2026   06:35   12-11-2026   06:35   4   FRANCO", "TORRES, JAVIER   28-10-2026   10:20   11-11-2026   10:20   4   FRANCO", "SANGUINETTI, LISANDRO   28-10-2026   17:00   11-11-2026   17:00   6   FRANCO", "LLAMBIAS, JAVIER   28-10-2026   06:00   11-11-2026   06:00   4   FRANCO", "OJEDA, SERGIO   28-10-2026   06:00   11-11-2026   06:00   6   FRANCO", "MOCHI, HORACIO   04-11-2026   06:00   27-11-2026   06:00   6   FRANCO", "VACCARO, MATIAS   26-10-2026   18:00   11-11-2026   06:00   3   FRANCO", "SUBIDA | Despachados", "Serv.:   Buque:   Bandera:   Pedido Para:   Practico 1:   Practico 2:   Desde:   Hasta:", "14170   MAGIC CHEMIST   PANAMA   08/11/2026   CUBA, EMMANUEL   MARTINEZ, CRISTIAN   ZEYA   SAN LORENZO", "19:50-I 08", "20:00-D1 09", "12:00-L1 SN -D2", "09 18:00-L2 SL", "1 / 4", "Multipar S.A.", "BAJADA | Despachados", "Sin ResultadosSin   Resultados", "CAMPANA | Despachados", "Serv.:   Buque:   Bandera:   Pedido Para:   Practico 1:   Practico 2:   Desde:   Hasta:", "14157   YALAZ   TURQUIA   Marcelo LTK   ESCOBAR   RADA ZARATE", "14165   ESTEFANIA H   ARGENTINA   09/11/2026   FLORES, LUIS   CANONICO, ROBERTO   RADA CAMPANA   SAN LORENZO", "02:00-I 09", "04:40-D1 09", "21:30-L1 s.l-L2", "14175   HELIOS   ISLAS MARSHALL   09/11/2026   NIRSCHL, HECTOR   BRETSCHNEIDER,   RADA CAMPANA   SAN LORENZO", "03:00-I 09   RODOLFO", "03:40-D1 09", "23:45-L1 s.l-L2", "14025   ZARA   LIBERIA   17/09/2026 10:00   Damian LTK   JUAN LTK   BRAZO LARGO   RADA SAN LORENZO - Via", "EM", "Cartelera", "Nota:", "Lancha SL Norte +54 9 3414 02-0345 // SL Sur +54 9 3414 00-5997", "ROSARIO - Serviprac: +54 9 3414 02-0325", "Gral. LAGOS / A. SECO - Serviprac: +54 9 3414 02-7988", "Lancha SN - Venticello +54 9 3412 56-8435", "Lancha RLLO / VCONST +54 9 3364 31-5597", "SAN PEDRO - Transpilot:SAN PEDRO - Transpilot: +54 9 3364 36-9869", "BRAZO LARGO - +54BRAZO LARGO - +54 99   11 6886-8141", "ZARATE - Serviprac: +54 9 11 4095-5604 / +54 9 11 4095-5561", "CAMPANA - Serviprac: +54 9 3414 02-0473", "ESCOBAR - Serviprac: +54 9 3489 69-1596", "LANCHA DEL ESTE: +54 9 11 3175-7979", "S. LORENZO Sur - Serviprac: +54 9 3414005997", "Pizarra", "Nota:", "Cap. De Biase informa que los buques que ingresen desde Montevideo debe navegar por el Canal Emilio Mitre.", "Consultar con la agencia cuál fue el último puertoúltimo puerto de procendencia.", "Reglamento Organizacion 2026 : Practico que realizaque realiza un movimiento desembarca por lancha", "Por decision de PAEPor decision de PAE (Campana) los autos no ingresan, pero les ponen a los Pcos. un traslado desde la barrera aldesde la barrera al", "buque.", "Lancha Escobar - Nuevo Celular: 3489-511953", "2 / 4", "Multipar S.A.", "15/10 Buenos   días.", "realicen enMe comunico desdeRamallo,SERVIPRACSan   Nicoláspara informarles que, a partir de ahora, todos los servicios que sey Villa Constitucióny   Villa Constitución deberán ser gestionados directamente", "con SERVIPRAC al número 3412568435.", "23/9 Buques en muelle SIDERCA (CPNA) se embarca por lancha, no se puede embarcar por", "tierra.-", "4/9 Hola   buenas   tardes   Para   avisarte que a partir de este momento todos   los", "trabajos   tienen   que   enviarlos   solamente a este celular por que las dos   lanchas", "van   a   estar   amarradas   en   cabotaje ( no más en waltieri ) waltieri solo   quedara", "para   embarco y   desembarco   en   caso sea necesario saludos .", "Solicitar   pedidos   GUARDIA SAN LORENZO NORTE + 54 9 341 4020345", "A partir de 1/4 subidas por Martin Garcia con destino T. Del Guazu / Km. 171 RPG se despachara con 2 Pcos.", "Salidas del turnoSalidas del turno sinsin   fecha de reingreso, para volver al turno debe ser informado 12 hs antes del mismo.del mismo.", "SUBIDA | Sin Despachar", "Serv.:   Buque:   Bandera:   Pedido Para:   Practico 1:   Practico 2:   Desde:   Hasta:", "14167   CHARBEL 1   ISLAS MARSHALL   09/11/2026 16:00   ZEYA   SAN LORENZO", "14160   CORAL ISLAND   MALTA   09/11/2026 22:00   ZEYA   RADA SAN LORENZO \"Sur\"", "M.G", "14098   TOURLIANI   MALTA   09/11/2026 23:00   ZEYA   SAN LORENZO", "14168   MISTRAL FLAME   LIBERIA   10/11/2026 20:00   ZEYA   SAN LORENZO", "14169   V BROS   ISLAS MARSHALL   10/11/2026 20:00   ZEYA   RADA ROSARIO (Ppal)", "14172   PVT GLORIA   PANAMA   16/11/2026 20:00   ZEYA   SAN LORENZO", "BAJADA | Sin Despachar", "Serv.:   Buque:   Bandera:   Pedido Para:   Practico 1:   Practico 2:   Desde:   Hasta:", "14179   ESTEFANIA H   ARGENTINA   10/11/2026 10:00   RADA SAN LORENZO - Via   RADA SAN NICOLAS", "EM", "14180   HELIOS   ISLAS MARSHALL   10/11/2026 10:00   RADA SAN LORENZO - Via   RADA CAMPANA", "EM", "14177   NEW LEADER   LIBERIA   10/11/2026 14:00   RADA ROSARIO (Ppal)   ZEYA", "14178   MAGIC CHEMIST   PANAMA   11/11/2026 10:00   RADA SAN LORENZO - Via   RADA GRAL. LAGOS", "EM", "3 / 4", "Multipar S.A.", "CAMPANA | SinCAMPANA | Sin DespacharDespachar", "Serv.:   Buque:   Bandera:   Pedido Para:   Practico 1:   Practico 2:   Desde:   Hasta:", "14176   MUROVDAG   ISLAS MARSHALL   10/11/2026 10:00   RADA CAMPANA   ZEYA", "14150   GOLDEN THETIS   PANAMA   10/11/2026 18:00   ZEYA   RADA CAMPANA", "14146   IPSWICH BAY   SINGAPUR   14/11/2026 23:00   ZEYA   RADA RAMALLO", "14108   MOONBEAM   PANAMA   20/11/2026 10:00   ZEYA   RADA SAN NICOLAS", "Licencias Solicitadas", "Nro.:   Practico:   Desde:   Dde.Hs:   Hasta:   Hta.Hs:   Motivo:   Ord:   Nota:   Coordinador:   Solicitada:   Tom.:", "3342   MOCHI, HORACIO   04-11-2026   06:00   27-11-2026   06:00   FRANCO   6   ROMANO,   04-11-2026 07:20   SI", "MARCELO", "3341   NIRSCHL, HECTOR   03-11-2026   06:00   04-11-2026   06:00   ENFERMO   2   ROMANO,   03-11-2026 06:00   SI", "MARCELO", "3340   CASANOVA, DIEGO   29-10-2026   06:35   12-11-2026   06:35   FRANCO   4   ROMANO,   29-10-2026 06:35   NO", "MARCELO", "3336   BAYONES, FERNANDO   28-10-2026   06:00   03-11-2026   06:00   FRANCO   8   CASANOVA,   28-10-2026 07:05   SI", "DIEGO", "3338   TORRES, JAVIER   28-10-2026   10:20   11-11-2026   10:20   FRANCO   4   ROMANO,   28-10-2026 10:47   SI", "MARCELO", "3329   LLAMBIAS, JAVIER   28-10-2026   06:00   11-11-2026   06:00   FRANCO   4   CASANOVA,   28-10-2026 04:57   SI", "DIEGO", "3331   OJEDA, SERGIO   28-10-2026   06:00   11-11-2026   06:00   FRANCO   6   CASANOVA,   28-10-2026 04:58   SI", "DIEGO", "3339   SANGUINETTI, LISANDRO   28-10-2026   17:00   11-11-2026   17:00   FRANCO   6   ROMANO,   28-10-2026 15:37   SI", "MARCELO", "3337   NIRSCHL, HECTOR   28-10-2026   06:00   30-10-2026   06:00   ENFERMO   1   ROMANO,   28-10-2026 08:15   SI", "MARCELO", "3332   FERRARI, GERMAN   28-10-2026   06:00   11-11-2026   06:00   FRANCO   7   CASANOVA,   28-10-2026 04:58   SI", "DIEGO", "4 / 4", "Powered by TCPDF (www.tcpdf.org)"];</script>
+<script>window.MP_FIXTURE={"actualizado":"2026-11-09T19:23:00-03:00","grids":{"GUARDIA":[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],["LISTADO DE PRACTICOS",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"FECHA:",null,null,{"__d":"2026-11-09T00:00:00","t":"9-Nov"},null,null,{"__d":"1899-12-30T07:00:00","t":"7:00"},null,"A",{"__d":"1899-12-30T19:00:00","t":"19:00"},null,{"__d":"2026-11-09T00:00:00","t":"9-Nov"},null],[1,"*","SOTELO",null,null,null,"E/T","08 - 03:30 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[2,"*","ROMANO",null,null,null,"E/T","08 . 10:50 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[3,"*","BAYONES",null,null,null,"E/T","08 . 13:00 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[4,"*","VAL",null,null,null,"E/T","08 . 16:55 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[5,"*","TORRES G.",null,null,null,"E/T","09 - 06:05 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[6,"*","CUBA S.",null,null,null,"E/T","09 - 06:05 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"*-"],[7,null,"CUBA E.",null,null,null,"E/T","09 - 17:00 (12)",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[8,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[9,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[10,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null," ",null,null,null,null,null],[11,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ANCHOS NAV 01/20.",null,null,null,"S. METEORO.",null,null,"CALADOS",null,null,"CALCULO MAREAS NECESARIAS",null],[13,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ALTURAS RIOS",null,null,null,"MAREOLOGICO",null,null,"https://snih.hidricosargentina.gob.ar/Filtros.aspx#",null,null,".ALTURAS HORARIAS        ",null],["EN VIAJE A ROSARIO ",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"GUARDIA ROSARIO",null,null,null,null,null,null,null,null,null,null,null],[null,"CUBA E.",null,null,null,null,null,null,null,"MAGIC CHEMIST ",null,null,null,null,null,null,"C:8,00",null,"MG",null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"MARTINEZ",null,null,"I:20:00",null,null,null,null,null,null,"SN:13:30",null,null,null,null,"S.L:19:00",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"FLORES",null,null,null,null,null,null,null,"ESTEFANIA H",null,null,null,null,null,null,"C:7,55",null,"RP",null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"CANONICO",null,null,"I:04:40",null,null,null,null,null,null,null,null,null,null,null,"S.L:00:00",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"NIRSCHL",null,null,null,null,null,null,null,"HELIOS",null,null,null,null,null,null,"C:9,00",null,"RP",null,"FRANCOS DEL 11/11 AL 27/11 - SOTELO - ROMANO - VAL - TORRES G - CUBA S - CUBA E -",null,null,null,null,null,null,null,null,null,null,null],[null,"BRETSCHNEIDER",null,null,null,"I:03:40",null,null,null,null,null,null,null,null,null,null,"S.L: 01:00",null,null,null,"MARTINEZ - FLORES - CANONICO - NIRSCHL - BRETSCHNEIDER - BAYONES - ",null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],["EN VIAJE DE ROSARIO ",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"FRANCOS",null,null,null,"Nº","HORA",null,"FECHA",null,"Comp.","HORA","INGRESO"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ROTELA",null,null,null,1,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"DE BIASE",null,null,null,2,{"__d":"1899-12-30T15:40:00","t":"15:40"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T15:40:00","t":"15:40"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"LLAMBIAS",null,null,null,3,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"SLUTZKY",null,null,null,4,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"VACCARO",null,null,null,5,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"OJEDA",null,null,null,6,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"MOCHI",null,null,null,7,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"FERRARI",null,null,null,8,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T06:00:00","t":"6:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"PASCUAL",null,null,null,9,{"__d":"1899-12-30T08:50:00","t":"8:50"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T08:50:00","t":"8:50"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"TORRES J",null,null,null,10,{"__d":"1899-12-30T10:20:00","t":"10:20"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T10:20:00","t":"10:20"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"SANGUINETTI",null,null,null,11,{"__d":"1899-12-30T17:00:00","t":"17:00"},null,{"__d":"2026-10-28T00:00:00","t":"28-Oct"},null,null,{"__d":"1899-12-30T17:00:00","t":"17:00"},{"__d":"2026-11-11T00:00:00","t":"11-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"CASANOVA",null,null,null,12,{"__d":"1899-12-30T06:35:00","t":"6:35"},null,{"__d":"2026-10-29T00:00:00","t":"29-Oct"},null,null,{"__d":"1899-12-30T06:35:00","t":"6:35"},{"__d":"2026-11-12T00:00:00","t":"12-Nov"}],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"EN VIAJE A CAMPANA",null,null,null,null,null,null,null,null,"EN VIAJE DE CAMPANA",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"MOVIMIENTOS",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"FALLECIMIENTO",null,null,null,"Nº","HORA",null,"FECHA",null,null,"HORA","INGRESO"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],["OBSERVACIONES",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ENFERMOS",null,null,null,"Nº","HORA",null,"FECHA",null,null,"HORA","INGRESO"],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"FALCON ",null,null,null,2,{"__d":"1899-12-30T06:00:00","t":"6:00"},null,{"__d":"2026-03-15T00:00:00","t":"15-Mar"},null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,"PRESIDENTE: DE BIASE, Leonardo",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"COORDINADOR: TORRES, Gabriel",null,null,null,null,null,null,null,null,null,null,null],[null,"https://snih.hidricosargentina.gob.ar/Inicio.aspx",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"TELEFONOS DE LAS LANCHAS DE SERVICIO EN LOS DISTINTOS PUERTOS",null,null,null,null,null,null,null,null,null,null,null],[null,"Desde este vinculo se puede acceder a la altura en ZTE,Bzo Largo etc",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"S. LORENZO             ",null,null,"0341-15-402-0345 / 0341-15-400-5997 - Habilitado embarcar y desembarcar por GUALTIERI\n",null,null,null,null,null,null,null,null],[null,"https://contenidosweb.prefecturanaval.gob.ar/reserva/",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ROSARIO                  ",null,null,"SERVIPRAC 0341-154-020325 / TRANSPILOT 011-156-4923033 - Guardia compartida a partir 12/1",null,null,null,null,null,null,null,null],[null,"Desde este vinculo se puede acceder a Reserva de CANAL",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"A. SECO                  ",null,null,"0341-15-402-7988",null,null,null,null,null,null,null,null],[null,"https://www.argentina.gob.ar/transporte/administracion-general-puertos-se/via-navegable-troncal",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"SAN NICOLAS",null,null,"\"Venticello\" AL: 0341-15-256-8435 // RLLO + VCON \"Francisco B\" AL: 0336-15-431-5597",null,null,null,null,null,null,null,null],[null,"10/03/25 VUELTA ESTE KM 103.4 - 11,30",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"SAN PEDRO              ",null,null,"011-15-6495-4994 \"Nuevo\" - Patron 03329-15-474-415",null,null,null,null,null,null,null,null],[null,"26/04/25 EMILIO MITRE KM 47,9 - 10,90",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"B. LARGO               ",null,null,"011-15-6886-8141",null,null,null,"FELIX 113193-7601",null,null,null,null],[null,"09/08/25 EMILIO MITRE Km 13,4 - 10,50",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ZARATE                  ",null,null,"011-15 40955604 / 011-15 40955561",null,null,null,null,null,null,null,null],[null,"16/08/25 DETERMINANTE ACC. Bs As Km 20,8 - 10,50",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"CAMPANA              ",null,null,"0341-15-402-0473 - COPRAC I - Bajan nuevamente en la guitarrita.",null,null,null,null,null,null,null,null],[null,"CANAL M. GARCIA - VER LINK ANCHOS NAVEGABLES ABAJO",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"ESCOBAR                ",null,null,"03489-15-691-596 / 03489-15-588-341 / 03489-15-590-011",null,null,null,null,null,null,null,null],[null,"14-06/16 P. BRAVO Km 144,9 - 9,30(100) 9,80(80) AL CERO GUAZU-GUAZUCITO",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]],"SUBIDAS":[[null," PROGRAMACION DE BUQUES",null,null,null,null,null,null,null,null,null],[null,"SUBIDAS 09 DE NOVIEMBRE DE 2026",null,null,null,null,null,null,null,null,null],[null,"AGENCIA",null,"COEF.","RECALADA / PREG.",null,"Z.C. // ETD",null,"DESDE","HASTA","OBSERVACIONES"],[null,null,null,null,"FECHA","HORA","FECHA","HORA",null,null,null],["X","ISA / RAMIRO","TOURLIANI ",180,{"__d":"2026-11-09T00:00:00","t":"9-Nov"},{"__d":"1899-12-30T19:00:00","t":"19:00"},{"__d":"2026-11-10T00:00:00","t":"10-Nov"},{"__d":"1899-12-30T03:00:00","t":"3:00"},"Z.C.","SAN LORENZO","T6 - AUTORIZADO"],["*","ISA / MAXI FANTIN ","CORAL ISLAND",135,"09-22:00","FOND 02-22:00",null,null,"Z.C.","SAN LORENZO","SAN BENITO  - NO AUT Pos 10/11  Am"],["*","ISA / GUILLERMO","CHARBEL 1",79,"10-10:00","FOND. 6/AM ",null,null,"Z.C.","SAN LORENZO","DEMPA - NO AUT. Pos. 10/11"],["*","ISA / RAMIRO","V BROS",100,{"__d":"2026-11-10T00:00:00","t":"10-Nov"},{"__d":"1899-12-30T22:00:00","t":"22:00"},null,null,"Z.C.","ROSARIO","UNIDAD VII - NO AUT. Pos al arribo-"],["*","ISA / IMANOL","MISTRAL FLAME",96,{"__d":"2026-11-11T00:00:00","t":"11-Nov"},{"__d":"1899-12-30T06:00:00","t":"6:00"},null,null,"Z.C.","SAN LORENZO","COFCO PGSM- COFCO TIMBUES- NO AUT. Pos al arribo-"],[null,"ISA / MAXI DIMENNA","PVT GLORIA",100,{"__d":"2026-11-16T00:00:00","t":"16-Nov"},"AM",null,null,"Z.C.","SAN LORENZO","MUELLE A CONFIRMAR - NO AUT. Pos al arribo-"],[null,null,null,98.57142857,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null]],"BAJADAS":[[null," PROGRAMACION DE BUQUES",null,null,null,null,null,null,null,null,null],[null,"BAJADAS 09 DE NOVIEMBRE DE 2026",null,null,null,null,null,null,null,null,null],[null,"AGENCIA","BUQUES","COEF.","RECALADA / PREG.",null,"Z.C. // ETD",null,"DESDE","HASTA","OBSERVACIONES"],[null,null,null,null,"FECHA","HORA","FECHA","HORA",null,null,null],[null,"DULCE/ LEANDRO ","ESTEFANIA H",65,"10-07:00",null,null,null,"SAN LORENZO","S.N.","PAMPA"],[null,"DULCE/ LEANDRO","HELIOS",65,"10-10:00",null,null,null,"SAN LORENZO","CPNA","PAE -"],[null,"ISA / MAXI FANTIN ","NEW LEADER",111,"10-10:00","FOND.",{"__d":"2026-11-11T00:00:00","t":"11-Nov"},null,"ROSARIO","Z.C.","UNIDAD 7  - Inicia operaciones 10/06:00hs"],[null,"ISA / RAMIRO","MAGIC CHEMIST ",141,"10-10:00","FOND.",{"__d":"2026-11-11T00:00:00","t":"11-Nov"},"NOCHE","SAN LORENZO","GRAL. LAGOS","MINERA -  (ETB 10/PM) - Luego Gral Lagos LDC"],[null,null,null,120.5,null,null,null,null,null,null,null]],"CAMPANA":[[null," PROGRAMACION DE BUQUES",null,null,null,null,null,null,null,null,null],[null,"CAMPANA - ZARATE - KM. 171 - SAN PEDRO - NVA. PALMIRA - SAN NICOLAS",null,null,null,null,null,null,null,null,null],[null,"09 DE NOVIEMBRE DE 2026 ",null,null,null,null,null,null,null,null,null],[null,null,"BUQUES","COEF.","RECALADA / PREG.",null,"CONFIRMADO",null,"DESDE","HASTA","OBSERVACIONES"],[null,null,null,null,"FECHA","HORA","FECHA","HORA",null,null,null],["*","STOLT / DIEGO KELLY 009/LAS","GOLDEN THETIS ",66,"10-10:00","FOND. 10/00:30",null,null,"Z.C.","CPNA","TAGSA - NO AUT Pos al arribo 12-13/11"],["*","ISA /ALEXANDER","MUROVDAG",102,{"__d":"2026-11-10T00:00:00","t":"10-Nov"},{"__d":"1899-12-30T10:00:00","t":"10:00"},{"__d":"2026-11-13T00:00:00","t":"13-Nov"},null,"CPNA","Z.C.","PAE - C:10,37 -"],["*","ISA / GASTON FRUTOS","IPSWICH BAY",101,{"__d":"2026-11-14T00:00:00","t":"14-Nov"},{"__d":"1899-12-30T23:00:00","t":"23:00"},null,null,"Z.C.","RLLO","BUNGE - NO AUT. Pos al arribo - LUEGO S.L. TFA"],["*","ISA / GASTON FRUTOS","MOONBEAM",138,{"__d":"2026-11-20T00:00:00","t":"20-Nov"},"AM ",null,null,"Z.C.","SAN NICOLAS","TERNIUM - C: 10,36Mts - NO AUT. Pos al arribo"],[null,null,null,67.83333333,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null]]}}</script>
+<script>
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+/* Adaptador: hojas en crudo de la planilla -> estado de la proyección.
+   Entrada: grids {GUARDIA, SUBIDAS, BAJADAS, CAMPANA}, anchorMs (momento al que corresponde el dato).
+   Salida: { T0, pilots, ships, avisos }. Todos los tiempos son horas desde las 00:00 de la fecha del turno. */
+function mpAdapter(grids, anchorMs) {
+  var avisos = [];
+  var H = 3600000;
+
+  function up(s) {
+    return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+  }
+  function str(c) {
+    if (c == null) return "";
+    if (typeof c === "object") return c.t != null ? String(c.t) : "";
+    return String(c).trim();
+  }
+  function cell(g, r, c) { return g && g[r] && g[r][c] != null ? g[r][c] : null; }
+  function isoParts(c) {
+    if (c && typeof c === "object" && c.__d) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(c.__d);
+      if (m) return { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
+    }
+    return null;
+  }
+  // Fecha (y,m,d) de una celda: Date de la planilla o texto dd/mm/aaaa
+  function dateOf(c) {
+    var p = isoParts(c);
+    if (p && p.y > 1900) return { y: p.y, mo: p.mo, d: p.d };
+    var t = str(c), m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+    if (m) return { y: +m[3], mo: +m[2], d: +m[1] };
+    return null;
+  }
+  // Hora (en horas decimales) de una celda: texto visible HH:MM al final, o la parte horaria de la fecha
+  function timeOf(c) {
+    var t = str(c), m = /(\d{1,2}):(\d{2})\s*$/.exec(t);
+    if (m && +m[1] < 24) return +m[1] + +m[2] / 60;
+    var p = isoParts(c);
+    if (p && p.y <= 1900) return p.h + p.mi / 60;
+    return null;
+  }
+
+  var G = grids.GUARDIA || [];
+  // ── Fecha del turno (T0) ──
+  var fT = dateOf(cell(G, 1, 22)) || dateOf(cell(G, 1, 4));
+  var anchor = new Date(anchorMs);
+  if (!fT) {
+    fT = { y: anchor.getFullYear(), mo: anchor.getMonth() + 1, d: anchor.getDate() };
+    avisos.push("No se encontró la fecha del turno en la hoja GUARDIA: se usa la fecha de hoy.");
+  }
+  var T0 = new Date(fT.y, fT.mo - 1, fT.d, 0, 0, 0).getTime();
+  var REFA = (anchorMs - T0) / H;
+  function absOf(dt, hh) { return (new Date(dt.y, dt.mo - 1, dt.d, 0, 0, 0).getTime() - T0) / H + hh; }
+
+  // ── Francos y enfermos (no entran a la lista) ──
+  var fuera = {};
+  var r, rr;
+  for (r = 0; r < G.length; r++) {
+    var u = up(str(cell(G, r, 20)));
+    if (u === "FRANCOS" || u === "ENFERMOS" || u === "FALLECIMIENTO") {
+      for (rr = r + 1; rr < G.length; rr++) {
+        var nm = up(str(cell(G, rr, 20)));
+        if (!nm) break;
+        // si la fecha de ingreso (col AF) y la hora (col AE) ya pasaron al momento del dato, vuelve a la lista
+        var ing = str(cell(G, rr, 31)), mi = /^(\d{1,2})-([A-Za-z]{3})[a-z]*(?:-(\d{2,4}))?$/.exec(ing), mh = /(\d{1,2}):(\d{2})/.exec(str(cell(G, rr, 30)));
+        if (mi && mh) {
+          var MES = { ENE: 1, JAN: 1, FEB: 2, MAR: 3, ABR: 4, APR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, AUG: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12, DEC: 12 };
+          var mo = MES[mi[2].toUpperCase()], yy = mi[3] ? (+mi[3] < 100 ? 2000 + +mi[3] : +mi[3]) : new Date(anchorMs).getFullYear();
+          var retA = mo ? absOf({ y: yy, mo: mo, d: +mi[1] }, +mh[1] + +mh[2] / 60) : null;
+          if (retA !== null && retA <= REFA) continue;
+          if (retA !== null && retA <= REFA + 72) {
+            var nOut = str(cell(G, rr, 24));
+            avisos.push(pretty(nm) + " vuelve a la lista el " + mi[1] + "-" + mi[2] + " " + mh[0] + ": debe avisar a los operadores antes de ingresar y entra con el número con que salió" + (nOut ? " (Nº " + nOut + ")" : "") + ". No cuenta en la proyección.");
+          }
+        }
+        fuera[nm] = true;
+      }
+    }
+  }
+  function pretty(n) {
+    return String(n).trim().toLowerCase().replace(/(^|[\s\/])([a-zñ])/g, function (m, a, b) { return a + b.toUpperCase(); });
+  }
+
+  // ── Lista del turno: nombre en C, "día - HH:MM" en H (hora de presentación) ──
+  var pilots = [], byName = {};
+  function addPilot(p) { pilots.push(p); byName[up(p.n)] = p; }
+  for (r = 2; r < G.length; r++) {
+    var nombre = str(cell(G, r, 2));
+    if (!nombre) { if (r > 3) break; else continue; }
+    var det = str(cell(G, r, 7));
+    var m = /(\d{1,2})\s*-\s*(\d{1,2}):(\d{2})/.exec(det);
+    var key = -1000;
+    if (m) {
+      // día del mes más cercano a la fecha del turno
+      var best = null;
+      [-1, 0, 1].forEach(function (off) {
+        var d0 = new Date(fT.y, fT.mo - 1 + off, +m[1]);
+        if (d0.getDate() !== +m[1]) return;
+        var a = (d0.getTime() - T0) / H + (+m[2]) + (+m[3]) / 60;
+        if (best === null || Math.abs(a + 0) < Math.abs(best)) best = a;
+      });
+      if (best !== null) key = best;
+    } else if (str(cell(G, r, 6)) && /E\/T/i.test(str(cell(G, r, 6)))) {
+      avisos.push("Sin hora de presentación para " + nombre + " en la lista: se la toma como libre.");
+    }
+    if (fuera[up(nombre)]) continue;
+    addPilot({ n: pretty(nombre), key: key, avail: key + 6, base: key > -500 ? [[key, key + 6, "rest"]] : [] });
+  }
+  var nTurno = pilots.length;
+  // El orden de la pizarra manda (p. ej. quien vuelve de enfermo conserva su lugar): la clave de orden nunca supera la del siguiente de la lista.
+  // El descanso (avail) sigue saliendo de la hora de presentación real.
+  (function () {
+    var nxt = 1e9, i;
+    for (i = pilots.length - 1; i >= 0; i--) {
+      var pk0 = pilots[i];
+      if (pk0.key < -500) continue;
+      if (pk0.key > nxt) pk0.key = nxt - 0.001;
+      nxt = pk0.key;
+    }
+  })();
+
+  // ── Buques en viaje: pares de filas dentro de cada bloque ──
+  var anchors = [];
+  for (r = 0; r < G.length; r++) {
+    var a0 = up(str(cell(G, r, 0))), b0 = up(str(cell(G, r, 1)));
+    if (a0.indexOf("EN VIAJE A ROSARIO") === 0) anchors.push({ r: r, kind: "S" });
+    else if (a0.indexOf("EN VIAJE DE ROSARIO") === 0) anchors.push({ r: r, kind: "B" });
+    else if (b0.indexOf("EN VIAJE A CAMPANA") === 0 || b0.indexOf("MOVIMIENTOS") === 0 || a0 === "OBSERVACIONES") anchors.push({ r: r, kind: "X" });
+  }
+  var PORTS = { "ESC": "ESC", "ZC": "ZC", "Z.C": "ZC", "CPNA": "CPNA", "SN": "SN", "S.N": "SN", "SL": "SL", "S.L": "SL", "AS": "AS", "A.S": "AS" };
+  var AN = { ESC: 1.5, ZC: 1.75, CPNA: 1.75, SN: 3.5, SL: 5.5, AS: 4.5 };
+  var tokRe = /([A-Z]{1,4}(?:\.[A-Z]{1,2})?)\s*:\s*(\d{1,2}):(\d{2})/;
+  var viaje = [];
+  anchors.forEach(function (an, ai) {
+    if (an.kind === "X") return;
+    var end = ai + 1 < anchors.length ? anchors[ai + 1].r : G.length;
+    r = an.r + 1;
+    while (r + 1 < end) {
+      // buque: primer texto sin ":" entre E y L de la fila
+      var ship = "", c;
+      for (c = 4; c <= 11; c++) {
+        var tx = str(cell(G, r, c));
+        if (tx && tx.indexOf(":") < 0 && !/^\d/.test(tx)) { ship = tx; break; }
+      }
+      if (!ship) { r++; continue; }
+      var p1 = str(cell(G, r, 1)), p2 = str(cell(G, r + 1, 1));
+      var toks = [];
+      for (c = 2; c <= 20; c++) {
+        var t2 = str(cell(G, r + 1, c)), mt = tokRe.exec(up(t2));
+        if (mt) toks.push({ lab: mt[1], h: +mt[2] + +mt[3] / 60 });
+      }
+      var cal = null, mc;
+      for (c = 14; c <= 19; c++) { mc = /\bC\s*:?\s*(\d+[.,]\d+)/.exec(up(str(cell(G, r, c)))); if (mc) { cal = parseFloat(mc[1].replace(",", ".")); break; } }
+      viaje.push({ kind: an.kind, ship: ship, p1: p1, p2: p2, toks: toks, cal: cal });
+      r += 2;
+    }
+  });
+
+  viaje.forEach(function (v) {
+    if (v.toks.length && v.toks[0].lab !== "I") avisos.push("Buque en viaje " + v.ship + ": no se leyó la hora de embarque (I:). Sus prácticos pueden quedar mal ubicados.");
+    if (v.toks.length < 2) { avisos.push("Buque en viaje " + v.ship + ": faltan horarios, no se pudo ubicar a sus prácticos."); return; }
+    // Días: el embarque (I:) es el último día en que ese horario ya pasó respecto del momento del dato
+    var aD = Math.floor(REFA / 24);
+    var absT = [], prev = null;
+    v.toks.forEach(function (tk, i) {
+      var t;
+      if (i === 0) {
+        t = aD * 24 + tk.h;
+        if (t > REFA) t -= 24;
+      } else {
+        t = Math.floor(prev / 24) * 24 + tk.h;
+        while (t < prev) t += 24;
+      }
+      absT.push(t); prev = t;
+    });
+    var n = v.toks.length;
+    var iLast = n - 1, iMid = n >= 3 ? n - 2 : n - 1;
+    var t0 = absT[0];
+    var asign = [];
+    var lastPort = PORTS[v.toks[iLast].lab] || null, midPort = PORTS[v.toks[iMid].lab] || null;
+    if (!lastPort || !midPort) { avisos.push("Buque en viaje " + v.ship + ": etiqueta de horario desconocida (" + v.toks[iLast].lab + ")."); return; }
+    // El práctico n.º 1 de la fila baja primero (punto intermedio) y el n.º 2 llega hasta el final
+    asign.push({ n: pretty(v.p1), port: midPort, dis: absT[iMid] });
+    asign.push({ n: pretty(v.p2), port: lastPort, dis: absT[iLast] });
+    asign.forEach(function (a) {
+      if (!a.n || fuera[up(a.n)]) return;
+      if (byName[up(a.n)]) return; // ya está en la lista del turno
+      var pr = AN[a.port], key = a.dis + pr;
+      addPilot({
+        n: a.n, key: key, avail: key + 6,
+        base: [[t0, a.dis, "nav", v.ship + (v.cal ? " · " + String(v.cal).replace(".", ",") + " m" : "")], [a.dis, key, "pres"], [key, key + 6, "rest"]],
+        ship: v.ship, port: a.port
+      });
+    });
+  });
+  pilots.sort(function (x, y) { return x.key - y.key; });
+
+  // ── Programación de buques (SUBIDAS / BAJADAS) ──
+  var ships = [];
+  var mvInfo = null;
+  function routeOf(tipo, desde, hasta) {
+    mvInfo = null;
+    var d = up(desde), h = up(hasta);
+    if (tipo === "campana") {
+      if (/CONST/.test(d) && /ROSARIO/.test(h)) return "vc_ros";
+      if (/PALMIRA/.test(d) && /PALMAS/.test(h)) return "np_lp";
+      if (/PALMIRA/.test(d) && /LORENZO|S\.?L\.?$/.test(h)) return "np_sl";
+      if (/^(CPNA|CAMPANA)/.test(d) && /^(Z\.?C|ZONA)/.test(h)) return "cp_zc";
+      if (/^(Z\.?C|ZONA)/.test(d) && /CPNA|CAMPANA/.test(h)) return "zc_cp";
+      var A = pk(d), B = pk(h);
+      if (A && B && A[1] !== B[1] && A[1] !== "ZC" && B[1] !== "ZC") { mvInfo = { from: A[1], to: B[1], kmA: A[2], kmB: B[2] }; return "mv"; }
+      return null;
+    }
+    if (tipo === "bajada" && /ROSARIO/.test(d) && /LORENZO|S\.?L\.?$/.test(h)) return "ros_sl";
+    if (tipo === "subida") {
+      if (/LORENZO|S\.?L\.?$/.test(h)) return "zc_sl";
+      if (/ARROYO|A\.? ?SECO/.test(h)) return "zc_as";
+      if (/NICOLAS|S\.?N\.?$/.test(h)) return "zc_sn";
+      if (/CPNA|CAMPANA/.test(h)) return "zc_cp";
+      return null;
+    }
+    var org = /LORENZO|TIMBUES/.test(d) ? "sl" : (/LAGOS/.test(d) ? "gl" : null);
+    var dst = /CPNA|CAMPANA/.test(h) ? "cp" : (/Z\.?C|ZONA/.test(h) ? "zc" : null);
+    if (org && dst && org + "_" + dst !== "gl_cp") return org + "_" + dst;
+    return null;
+  }
+  // Guardia Rosario: prácticos ya designados a un buque (nombre col U, "E/T" + día - hora, buque col AA)
+  var desig = {}, movTxt = "";
+  anchors.forEach(function (an, ai) {
+    var end = ai + 1 < anchors.length ? anchors[ai + 1].r : G.length, rr;
+    for (rr = an.r; rr < end; rr++) {
+      if (an.kind === "X") { for (c = 0; c < 30; c++) movTxt += " " + up(str(cell(G, rr, c))); continue; }
+      if (an.kind !== "S") continue;
+      var nm = str(cell(G, rr, 20)), dh = /(\d{1,2})\s*-\s*(\d{1,2}):(\d{2})/.exec(str(cell(G, rr, 24))), sh = up(str(cell(G, rr, 26)));
+      if (nm && dh && sh) { (desig[sh] = desig[sh] || { names: [], at: absOf({ y: fT.y, mo: fT.mo, d: +dh[1] }, +dh[2] + +dh[3] / 60) }).names.push(pretty(nm)); }
+    }
+  });
+  // Tramos cortos: puerto -> {clave, km aprox. del río, presentación Anexo I}
+  var PK = [[/Z\.? ?C\b|ZONA COM/, "ZC", 52], [/ESCOBAR/, "ESC", 60], [/CAMPANA|CPNA/, "CPNA", 94], [/DELTA ?DOCK|D\.? ?DOCK/, "DD", 97], [/LAS PALMAS|PALMAS/, "LP", 100], [/ZARATE/, "ZAR", 108],
+    [/SAN PEDRO/, "SP", 250], [/RAMALLO|\bRLLO\b/, "RAM", 328], [/NICOLAS|\bS\.? ?N\b/, "SN", 344], [/VILLA|CONST/, "VC", 362], [/LAGOS/, "GL", 385], [/ARROYO|\bA\.? ?SECO/, "AS", 399], [/ROSARIO/, "ROS", 412], [/LORENZO|\bS\.? ?L\b|TIMBUES/, "SL", 443]];
+  function pk(txt) { var x = up(txt); for (var i = 0; i < PK.length; i++) if (PK[i][0].test(x)) return PK[i]; return null; }
+  var horizonLo = -24, horizonHi = 24 * 4;
+  function datePlus(c) {
+    // fecha en celda: Date, dd/mm/aaaa, o "30-10:00" (día 30, 10:00)
+    var d = dateOf(c);
+    if (d) return { d: d, h: null };
+    var t = str(c), m = /^(\d{1,2})-(\d{1,2}):(\d{2})$/.exec(t);
+    if (m) {
+      var dd = new Date(fT.y, fT.mo - 1, +m[1]);
+      return { d: { y: dd.getFullYear(), mo: dd.getMonth() + 1, d: dd.getDate() }, h: +m[2] + +m[3] / 60 };
+    }
+    return null;
+  }
+  [["SUBIDAS", "subida"], ["BAJADAS", "bajada"], ["CAMPANA", "campana"]].forEach(function (pair) {
+    var g = grids[pair[0]] || [], tipo = pair[1];
+    for (var i = 0; i < g.length; i++) {
+      var buque = str(cell(g, i, 2)), coef = cell(g, i, 3);
+      if (!buque || typeof coef !== "number") continue;
+      var desde = str(cell(g, i, 8)), hasta = str(cell(g, i, 9)), obs = str(cell(g, i, 10));
+      var cE = datePlus(cell(g, i, 4)), cF = cell(g, i, 5), cG = datePlus(cell(g, i, 6)), cH = cell(g, i, 7);
+      var dT = tipo === "subida" ? cE : cG, hT = tipo === "subida" ? cF : cH;
+      var esMov = tipo === "campana";
+      var t = null;
+      var hh = timeOf(hT);
+      if (dT && hh !== null) t = absOf(dT.d, hh);
+      if (tipo === "campana" && ships.some(function (q) { return q.n === up(buque); })) continue;
+      if (tipo !== "subida" && movTxt.indexOf(" " + up(buque)) >= 0 && /MOVIM/.test(movTxt)) continue;
+      var hint = [tipo === "subida" ? str(cF) : str(cH), obs].filter(Boolean).join(" · ");
+      var s = { id: tipo + ":" + up(buque) + ":" + up(desde), n: up(buque), dir: (tipo === "subida" || esMov) ? "S" : "B", np: 1, cal: null, route: routeOf(tipo, desde, hasta), mv: mvInfo, coef: coef, t: t, desde: desde, hasta: hasta, obs: obs, hint: hint };
+      var refDate = dT || cE || cG;
+      if (t === null) {
+        // sin hora: solo se ofrece cargarla si el buque cae dentro del horizonte
+        var dd2 = refDate ? absOf(refDate.d, 0) : null;
+        if (dd2 === null || dd2 < horizonLo || dd2 > horizonHi) continue;
+        s.pending = true;
+        s.dayHint = dd2;
+      } else if (t < horizonLo || t > horizonHi) continue;
+      s.np = (s.route === "mv" || s.route === "vc_ros" || s.route === "ros_sl" || s.route === "cp_zc" || s.route === "zc_cp") ? 1 : 2;
+      if (s.route === "cp_zc") s.dir = "B";
+      if (s.route === "zc_cp") s.dir = "S";
+      if (s.route === "ros_sl") s.dir = "S";
+      if (s.route === "mv") s.dir = s.mv.kmB > s.mv.kmA ? "S" : "B";
+      var mcal = /CAL\.?\s*:?\s*(\d+[.,]\d+)/.exec(up(obs));
+      if (mcal) s.cal = parseFloat(mcal[1].replace(",", "."));
+      if ((s.route === "cp_zc" || s.route === "zc_cp") && s.cal && s.cal >= 8.84) s.np = 2;
+      if (!s.route) { avisos.push(s.n + ": ruta no modelada (" + (desde || "?") + " a " + (hasta || "?") + "). No entra a la proyección."); continue; }
+      var dz = desig[s.n];
+      if (dz) {
+        s.fixed = dz.names; s.fixedAt = dz.at;
+        // Si la fila del buque en viaje lista 2 prácticos (uno puede ser externo: Falcon, Campetella, otra empresa), salen los 2
+        viaje.forEach(function (v) {
+          if (up(v.ship) === s.n && v.kind === "B" && v.p1 && v.p2) s.fixed = [pretty(v.p1), pretty(v.p2)];
+        });
+        if (s.fixed.length < s.np) s.np = s.fixed.length;
+        s.ext = s.fixed.filter(function (nm) { return !pilots.some(function (p) { return p.n.toLowerCase() === nm.toLowerCase(); }); });
+      }
+      ships.push(s);
+    }
+  });
+  var outCampana = [];
+  (grids.CAMPANA || []).forEach(function (row, i) {
+    var b = str(cell(grids.CAMPANA, i, 2));
+    if (b && typeof cell(grids.CAMPANA, i, 3) === "number") outCampana.push(up(b));
+  });
+  if (outCampana.length) avisos.push("Hoja CAMPANA: los tramos cortos entre puertos conocidos se simulan con 1 práctico (tiempo por distancia y velocidad). Los que no se pueden ubicar quedan avisados aparte. Buques de la hoja: " + outCampana.slice(0, 6).join(", ") + (outCampana.length > 6 ? "…" : "") + ".");
+
+  // Rotación de francos 14x14 (planilla Francos y Licencias 2026): cambio de grupo a las 06:00
+  (function () {
+    var GA = "Bretschneider, Canonico, Cuba E., Cuba S., Falcon, Flores, Llambias, Martinez, Nirschl, Romano, Sotelo, Torres G., Val";
+    var GB = "Bayones, Casanova, De Biase, Farias, Ferrari, Mochi, Ojeda, Pascual, Rotela, Sanguinetti, Slutzky, Torres J., Vaccaro";
+    [[2026, 11, 11, GB, GA], [2026, 11, 27, GA, GB], [2026, 12, 13, GB, GA]].forEach(function (c) {
+      var at = absOf({ y: c[0], mo: c[1], d: c[2] }, 6);
+      if (at > REFA && at <= REFA + 24 * 7) avisos.push("Cambio de francos el " + c[2] + "/" + c[1] + " 06:00: vuelven " + c[3] + ". Salen " + c[4] + ". (Planilla de francos 2026; los cambios individuales no están cargados)");
+    });
+  })();
+  avisos = avisos.filter(function (m) { return !/^Buque en viaje (.+): faltan horarios/.test(m) || !desig[up(/^Buque en viaje (.+?): faltan/.exec(m)[1])]; });
+  return { T0: T0, pilots: pilots, ships: ships, avisos: avisos, nTurno: nTurno, turnoFecha: fT, nFuera: Object.keys(fuera).length };
+}
+/* Adaptador PDF del sistema ("Guardia_AAAAMMDDhhmmss.pdf"): líneas de texto -> mismo estado que mpAdapter. */
+function mpAdapterPdf(lines, anchorMs) {
+  var avisos = [], H = 3600000;
+  function up(s) { return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim(); }
+  function cap(w) { return w.toLowerCase().replace(/(^|[\s\-])([a-zñ])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
+  var all = lines.join("\n");
+  var mh = /Turnos al d[ií]a\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/i.exec(all);
+  if (!mh) return null;
+  var fT = { y: +mh[3], mo: +mh[2], d: +mh[1] };
+  var T0 = new Date(fT.y, fT.mo - 1, fT.d, 0, 0, 0).getTime();
+  var REFA = (anchorMs - T0) / H;
+  var STAMPA = +mh[4] + +mh[5] / 60;
+  function absOf(y, mo, d, hh) { return (new Date(y, mo - 1, d, 0, 0, 0).getTime() - T0) / H + hh; }
+
+  // ── secciones ──
+  var sec = "", turno = [], inact = [], blocks = [], cur = null;
+  var NAME = "([A-ZÑÁÉÍÓÚ][A-ZÑÁÉÍÓÚ .'-]*?),\\s+([A-ZÑÁÉÍÓÚ][A-ZÑÁÉÍÓÚ .'-]*?)";
+  var reTurno = new RegExp("^\\s*(\\d+)\\s+" + NAME + "\\s+(\\d{2})-(\\d{2})-(\\d{4})\\s+(\\d{2}):(\\d{2})");
+  var reInact = new RegExp("^\\s*" + NAME + "\\s+(\\d{2})-(\\d{2})-(\\d{4})\\s+(\\d{2}):(\\d{2})\\s+(\\d{2})-(\\d{2})-(\\d{4})\\s+(\\d{2}):(\\d{2})");
+  lines.forEach(function (ln) {
+    var u = up(ln), m;
+    if (/^TURNOS AL DIA/.test(u)) { sec = "turno"; return; }
+    if (/^PRACTICOS INACTIVOS/.test(u)) { sec = "inact"; return; }
+    if ((m = /^(SUBIDA|BAJADA|CAMPANA)\s*\|/.exec(u))) { sec = m[1].toLowerCase() + (/DESPACHADOS/.test(u) ? ":d" : ":p"); cur = null; return; }
+    if (/^(LICENCIAS SOLICITADAS|CARTELERA|PIZARRA)/.test(u)) { sec = "x"; cur = null; return; }
+    if (sec === "turno" && (m = reTurno.exec(ln))) {
+      turno.push({ pos: +m[1], sur: up(m[2]), first: up(m[3]), key: absOf(+m[6], +m[5], +m[4], +m[7] + +m[8] / 60) });
+    } else if (sec === "inact" && (m = reInact.exec(ln))) {
+      var mo = /^\s+(\d+)/.exec(ln.slice(m[0].length)); inact.push({ sur: up(m[1]), first: up(m[2]), ret: absOf(+m[10], +m[9], +m[8], +m[11] + +m[12] / 60), ord: mo ? +mo[1] : 99 });
+    } else if (/:[dp]$/.test(sec)) {
+      var ms = /^\s*(\d{5})\s+(.*)$/.exec(ln);
+      if (ms) { cur = { sec: sec, text: ms[2], extra: [] }; blocks.push(cur); }
+      else if (cur && u && !/^(SERV\.|MULTIPAR|\d+\/\d+$)/.test(u) && !/^SIN RESULTADOS/.test(u)) cur.extra.push(ln.trim());
+    }
+  });
+
+  // ── nombres: apellido (+ inicial si se repite) ──
+  var known = [];
+  turno.concat(inact).forEach(function (p) { known.push({ sur: p.sur, first: p.first }); });
+  var reNm = /((?:DE |DEL |DA )?[A-ZÑ]+),\s+([A-ZÑ]+)/g;
+  function namesOf(line) { var o = [], m; reNm.lastIndex = 0; while ((m = reNm.exec(up(line)))) o.push({ sur: m[1], first: m[2] }); return o; }
+  blocks.forEach(function (b) { if (b.sec.slice(-1) === "d") namesOf(b.text).forEach(function (n) { known.push(n); }); });
+  var cnt = {};
+  var seen = {};
+  known.forEach(function (k) { var id = k.sur + "|" + k.first; if (!seen[id]) { seen[id] = 1; cnt[k.sur] = (cnt[k.sur] || 0) + 1; } });
+  function disp(sur, first) { return cap(sur) + (cnt[sur] > 1 ? " " + first.charAt(0) + "." : ""); }
+  function dispUp(full) { // "SURN, FIRST" -> nombre en pantalla
+    var i = full.indexOf(","); return i < 0 ? cap(full) : disp(up(full.slice(0, i)), up(full.slice(i + 1)));
+  }
+
+  var pilots = [], byName = {};
+  function addPilot(p) { pilots.push(p); byName[up(p.n)] = p; }
+  turno.forEach(function (t) { addPilot({ n: disp(t.sur, t.first), key: t.key, avail: t.key + 6, base: [[t.key, t.key + 6, "rest"]] }); });
+  var nTurno = pilots.length;
+  // el orden de la pizarra manda: la clave de orden nunca supera la del siguiente
+  (function () { var nxt = 1e9, i; for (i = pilots.length - 1; i >= 0; i--) { if (pilots[i].key > nxt) pilots[i].key = nxt - 0.001; nxt = pilots[i].key; } })();
+  var inactSet = {};
+  inact.forEach(function (p) { inactSet[up(disp(p.sur, p.first))] = p; if (p.ret > REFA && p.ret <= REFA + 72) avisos.push(disp(p.sur, p.first) + " vuelve a la lista el " + Math.floor(p.ret / 24 + 0) + ": debe avisar a los operadores antes de ingresar y entra con el número con que salió."); });
+  // (el aviso anterior se reescribe con fecha legible)
+  avisos = [];
+  inact.forEach(function (p) {
+    if (p.ret > REFA && p.ret <= REFA + 72) {
+      var dd = new Date(T0 + p.ret * H);
+      avisos.push(disp(p.sur, p.first) + " vuelve a la lista el " + dd.getDate() + "/" + (dd.getMonth() + 1) + " " + ("0" + dd.getHours()).slice(-2) + ":" + ("0" + dd.getMinutes()).slice(-2) + ": debe avisar a los operadores antes de ingresar y entra con el número con que salió. No cuenta en la proyección.");
+    }
+  });
+
+  // ── rutas ──
+  function zc(x) { return /ZEYA|Z\.?\s?C\b|ZONA COM/.test(x); }
+  var mvInfo = null;
+  var PK = [[/ESCOBAR/, "ESC", 60], [/CAMPANA|CPNA/, "CPNA", 94], [/DELTA ?DOCK/, "DD", 97], [/LAS PALMAS|PALMAS/, "LP", 100], [/ZARATE/, "ZAR", 108], [/SAN PEDRO/, "SP", 250], [/RAMALLO|\bRLLO\b/, "RAM", 328], [/NICOLAS/, "SN", 344], [/VILLA|CONST/, "VC", 362], [/LAGOS/, "GL", 385], [/ARROYO|A\. ?SECO/, "AS", 399], [/ROSARIO/, "ROS", 412], [/LORENZO|TIMBUES/, "SL", 443]];
+  function pk(t) { for (var i = 0; i < PK.length; i++) if (PK[i][0].test(t)) return PK[i]; return null; }
+  function routeOf(tipo, d, h) {
+    mvInfo = null;
+    if (tipo === "subida") {
+      if (!zc(d)) return null;
+      if (/LORENZO/.test(h)) return "zc_sl";
+      if (/ARROYO|A\. ?SECO/.test(h)) return "zc_as";
+      if (/NICOLAS/.test(h)) return "zc_sn";
+      if (/CAMPANA|CPNA/.test(h)) return "zc_cp";
+      return null;
+    }
+    if (tipo === "bajada") {
+      if (/ROSARIO/.test(d) && /LORENZO/.test(h)) return "ros_sl";
+      if (zc(h) && /LORENZO|TIMBUES/.test(d)) return "sl_zc";
+      if (zc(h) && /LAGOS/.test(d)) return "gl_zc";
+      if (zc(h) && /ARROYO|A\. ?SECO/.test(d)) return "as_zc";
+      if (/CAMPANA|CPNA/.test(h) && /LORENZO|TIMBUES/.test(d)) return "sl_cp";
+      return null;
+    }
+    // campana
+    if (/PALMIRA/.test(d) && /LORENZO/.test(h)) return "np_sl";
+    if (/PALMIRA/.test(d) && /GUAZU|PALMAS/.test(h)) return "np_lp";
+    if (/CAMPANA|CPNA/.test(d) && zc(h)) return "cp_zc";
+    if (zc(d) && /CAMPANA|CPNA/.test(h)) return "zc_cp";
+    if (/CONST|VILLA/.test(d) && /ROSARIO/.test(h)) return "vc_ros";
+    var A = pk(d), B = pk(h);
+    if (A && B && A[1] !== B[1] && !zc(d) && !zc(h)) { mvInfo = { from: A[1], to: B[1], kmA: A[2], kmB: B[2] }; return "mv"; }
+    return null;
+  }
+
+  // ── buques ──
+  var ships = [], pilotNames = turno.concat(inact);
+  var horizonLo = -24, horizonHi = 24 * 4;
+  function pilotsIn(line) { return namesOf(line); }
+  blocks.forEach(function (b) {
+    var tipo = b.sec.split(":")[0], desp = b.sec.slice(-1) === "d";
+    var txt = up(b.text + "  " + b.extra.join("  "));
+    var md = /(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(b.text);
+    if (!md) return;
+    // buque: texto antes de la fecha, sin la bandera
+    var BAND = /\s+(ISLAS MARSHALL|LIBERIA|PANAMA|MALTA|INDIA|GRECIA|ARGENTINA|BRASIL|SINGAPUR|BAHAMAS|CHIPRE|HONG KONG|JAPON|CHINA|NORUEGA|DINAMARCA|ALEMANIA|ITALIA|FRANCIA|REINO UNIDO|PARAGUAY|URUGUAY|BOLIVIA|ANTIGUA Y BARBUDA|SAN VICENTE|MARSHALL)\s*$/;
+    var ship = up(b.text.slice(0, md.index)).replace(/\s*\d{2}:\d{2}\s*-.*$/, "").replace(BAND, "").trim();
+    if (!ship) return;
+    var hh = md[4] ? +md[4] + +md[5] / 60 : null;
+    var tokI = /(\d{2}):(\d{2})\s*-\s*I\b/.exec(txt);
+    if (hh === null && tokI) hh = +tokI[1] + +tokI[2] / 60;
+    if (hh === null) return;
+    var t = absOf(+md[3], +md[2], +md[1], hh);
+    // desde/hasta: los dos primeros lugares conocidos después de la fecha y los prácticos
+    var rest = up(b.text.slice(md.index + md[0].length)).replace(/((?:DE |DEL |DA )?[A-ZÑ]+,\s+[A-ZÑ]+)/g, " ");
+    var plc = rest.match(/ZEYA|(?:RADA )?(?:SAN LORENZO|GRAL\. LAGOS|ROSARIO|CAMPANA|NUEVA PALMIRA|RAMALLO|SAN NICOLAS|TIMBUES|ARROYO SECO|DEL GUAZU|BRAZO LARGO|ZARATE|SAN PEDRO|VILLA CONSTITUCION)/g) || [];
+    var desde = plc[0] || "", hasta = plc[1] || "";
+    if (desp && t < REFA - 72) return; // despachado viejo (p. ej. pruebas del sistema): no es una salida en curso
+    var route = routeOf(tipo, desde, hasta);
+    var name = ship;
+    if (!desp) {
+      if (t < horizonLo || t > horizonHi) return;
+    }
+    if (!route) { if (t >= horizonLo && t <= horizonHi) avisos.push(name + ": ruta no modelada (" + desde + " a " + hasta + "). No entra a la proyección."); return; }
+    var s = { id: tipo + ":" + name + ":" + desde, n: name, dir: tipo === "subida" ? "S" : "B", np: 2, cal: null, route: route, mv: mvInfo, t: t, desde: desde, hasta: hasta, obs: "", hint: "" };
+    s.np = (route === "mv" || route === "vc_ros" || route === "ros_sl" || route === "cp_zc" || route === "zc_cp") ? 1 : 2;
+    if (route === "ros_sl" || route === "mv" && mvInfo.kmB > mvInfo.kmA) s.dir = "S";
+    if (route === "np_sl" || route === "np_lp") s.dir = "S";
+    if (route === "cp_zc") s.dir = "B";
+    if (route === "zc_cp") s.dir = "S";
+    if (route === "mv") s.dir = mvInfo.kmB > mvInfo.kmA ? "S" : "B";
+    if (desp) {
+      var fp = pilotsIn(b.text);
+      if (!fp.length) return;
+      var inTurno = fp.filter(function (q) { return byName[up(disp(q.sur, q.first))]; });
+      var out = fp.filter(function (q) { return !byName[up(disp(q.sur, q.first))]; });
+      if (!out.length) return; // sus prácticos ya volvieron a la lista
+      // los que no están en la lista: o están de franco (externos que cubren) o salieron en este buque
+      var names = [], ext = [];
+      fp.forEach(function (q) {
+        var nm = disp(q.sur, q.first);
+        names.push(nm);
+        if (inactSet[up(nm)]) ext.push(nm);
+        else if (!byName[up(nm)]) addPilot({ n: nm, key: -100, avail: -94, base: [], trip: true });
+      });
+      // tiempos L1/L2 si vienen
+      var l1 = /(\d{2}):(\d{2})\s*-\s*L1\s+([A-Z.]+)/.exec(txt), l2 = /(\d{2}):(\d{2})\s*-\s*L2\s+([A-Z.]+)/.exec(txt);
+      if (l1 && l2 && t < REFA) {
+        var PM = { "ESC": ["ESC", 1.5], "ZC": ["ZC", 1.75], "Z.C": ["ZC", 1.75], "CPNA": ["CPNA", 1.75] };
+        var a1 = absOf(+md[3], +md[2], +md[1], +l1[1] + +l1[2] / 60), a2;
+        while (a1 < t) a1 += 24;
+        a2 = absOf(+md[3], +md[2], +md[1], +l2[1] + +l2[2] / 60); while (a2 < a1) a2 += 24;
+        var P1 = PM[l1[3]], P2 = PM[l2[3]];
+        if (P1 && P2) {
+          [[fp[0], a1, P1], [fp[1], a2, P2]].forEach(function (z) {
+            if (!z[0]) return;
+            var nm = disp(z[0].sur, z[0].first), pp = byName[up(nm)];
+            if (pp && !pp.trip) return; // ya volvió a la lista
+            var dis = z[1] - 0.5, key = dis + z[2][1];
+            if (inactSet[up(nm)]) return;
+            if (pp) { pp.key = key; pp.avail = key + 6; pp.base = [[t, dis, "nav", name], [dis, key, "pres"], [key, key + 6, "rest"]]; }
+          });
+          return;
+        }
+      }
+      s.fixed = names; s.fixedAt = t; s.ext = ext;
+      if (names.length < s.np) s.np = names.length;
+      s.hint = "despachado";
+    } else if (t < horizonLo || t > horizonHi) return;
+    ships.push(s);
+  });
+  // Francos que vuelven dentro de la ventana: entran a la lista en su hora de regreso, arriba y por su número anterior
+  inact.forEach(function (p) {
+    var nm = disp(p.sur, p.first);
+    if (p.ret > REFA && p.ret <= REFA + 24 * 8 && !byName[up(nm)]) addPilot({ n: nm, key: p.ret - 2000 + p.ord * 0.01, ord: p.ret - 2000 + p.ord * 0.01, enter: p.ret, avail: p.ret, base: [], back: true });
+  });
+  pilots.sort(function (x, y) { return x.key - y.key; });
+
+  // Rotación de francos 14x14 (planilla 2026): cambio de grupo a las 06:00
+  (function () {
+    var GA = "Bretschneider, Canonico, Cuba E., Cuba S., Falcon, Flores, Llambias, Martinez, Nirschl, Romano, Sotelo, Torres G., Val";
+    var GB = "Bayones, Casanova, De Biase, Farias, Ferrari, Mochi, Ojeda, Pascual, Rotela, Sanguinetti, Slutzky, Torres J., Vaccaro";
+    [[2026, 10, 28, GA, GB], [2026, 11, 11, GB, GA], [2026, 11, 27, GA, GB], [2026, 12, 13, GB, GA]].forEach(function (c) {
+      var at = absOf(c[0], c[1], c[2], 6);
+      if (at > REFA) c[4].split(",").forEach(function (nm) { var q = byName[up(nm.trim())]; if (q && !q.back && (q.leaveAt === undefined || at < q.leaveAt)) q.leaveAt = at; });
+      if (at > REFA && at <= REFA + 24 * 7) avisos.push("Cambio de francos el " + c[2] + "/" + c[1] + " 06:00: vuelven " + c[3] + ". Salen " + c[4] + ". (Planilla de francos 2026; los cambios individuales no están cargados)");
+    });
+  })();
+  return { T0: T0, pilots: pilots, ships: ships, avisos: avisos, nTurno: nTurno, turnoFecha: fT, stampH: STAMPA, nFuera: inact.length };
+}
+</script>
+<script>
+(function () {
+  var H = 3600000, PX = 20, LBL = 150, SPAN = 60;
+  var GUARDIA_URL = "https://script.google.com/macros/s/AKfycbwTMwOecSrHAbbJt89-M8j-TitZn2pfGur1KYaacMmMEt7eYyxwMEDcmhG4wUuWIKIy5w/exec";
+  var W0 = 0, W1 = SPAN, CHW = SPAN * PX;
+  var T0 = new Date(2026, 9, 29, 0, 0, 0).getTime();
+  var DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  var PILOTS = [], SHIPS = [], AVISOS = [], PEND = [], NFUERA = 0, voyState = null;
+  var DEMOMSG = "", MODE = "demo", followNow = true, loadedAt = null, apiStamp = "";
+
+  function p2(n) { return (n < 10 ? "0" : "") + n; }
+  function X(t) { return (Math.min(Math.max(t, W0), W1) - W0) * PX; }
+  function dOf(t) { return new Date(T0 + Math.round(t * 60) * 60000); }
+  function fmt(t) { var d = dOf(t); return d.getDate() + "/" + (d.getMonth() + 1) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+  function fmtH(t) { return fmt(t).split(" ")[1]; }
+  function dayLbl(t) { var d = dOf(t); return DIAS[d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1); }
+  function el(cls, tag) { var e = document.createElement(tag || "div"); if (cls) e.className = cls; return e; }
+  function toInput(ms) { var d = new Date(ms); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + "T" + p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+  function store(k, v) {
+    try {
+      if (v === undefined) { var x = localStorage.getItem("mpproy:" + k); return x ? JSON.parse(x) : null; }
+      localStorage.setItem("mpproy:" + k, JSON.stringify(v));
+    } catch (e) { return null; }
+  }
+
+  var PDEF = [
+    { k: "sn", l: "Subida: Z.C. a San Nicolás", v: 16, tag: "tuyo" },
+    { k: "sl", l: "Subida: Z.C. a San Lorenzo", v: 22, tag: "tuyo" },
+    { k: "as", l: "Subida: Z.C. a Arroyo Seco", v: 19, tag: "estimado" },
+    { k: "pas", l: "Presentación en Arroyo Seco", v: 4.5, tag: "estimado" },
+    { k: "slEsc", l: "Bajada San Lorenzo a Escobar", v: 15, tag: "tuyo" },
+    { k: "slZc", l: "Bajada San Lorenzo a Z.C.", v: 20, tag: "tuyo" },
+    { k: "slCp", l: "Bajada San Lorenzo a Campana", v: 12, tag: "tuyo, de Helios" },
+    { k: "glEsc", l: "Bajada Gral. Lagos a Escobar", v: 14, tag: "estimado" },
+    { k: "glZc", l: "Bajada Gral. Lagos a Z.C.", v: 19, tag: "estimado" },
+    { k: "vcros", l: "Movimiento: Villa Const. a Rosario", v: 2.5, tag: "tuyo, reglamento" },
+    { k: "asEsc", l: "Bajada: Arroyo Seco a Escobar", v: 12, tag: "estimado, corregilo" },
+    { k: "asZc", l: "Bajada: Arroyo Seco a Z.C.", v: 17, tag: "estimado, corregilo" },
+    { k: "knS", l: "Velocidad tramos cortos, subida (nudos)", v: 10, tag: "tuyo" },
+    { k: "knB", l: "Velocidad tramos cortos, bajada (nudos)", v: 12, tag: "tuyo" },
+    { k: "rossl", l: "Movimiento: Rosario a San Lorenzo", v: 2, tag: "tuyo" },
+    { k: "npsl", l: "Subida: N. Palmira a San Lorenzo", v: 16, tag: "tuyo" },
+    { k: "nplp", l: "Subida: N. Palmira a Las Palmas", v: 9, tag: "estimado, corregilo" },
+    { k: "cpzc", l: "Bajada: Campana a Z.C.", v: 6.5, tag: "tuyo" },
+    { k: "ent", l: "Bajada: demora entre el pedido a bordo y el inicio formal (promedio)", v: 1, tag: "tuyo, depende de la terminal" },
+    { k: "marea", l: "Calado desde el que espera marea en Escobar", v: 10, tag: "estimado, corregilo" }
+  ];
+  var P = {};
+  PDEF.forEach(function (d) { P[d.k] = d.v; });
+  var sp = store("params8");
+  if (sp) PDEF.forEach(function (d) { if (typeof sp[d.k] === "number") P[d.k] = sp[d.k]; });
+  var AN = { ESC: 1.5, ZC: 1.75, CPNA: 1.75, SN: 3.5, SL: 5.5, ROS: 4.5, LP: 2.25, DD: 2.5, ZAR: 2, SP: 3, RAM: 3.25, VC: 3.75, GL: 4, AS: 4.5 };
+  var PORT = { ESC: "Escobar", ZC: "Z.C.", CPNA: "Campana", SN: "San Nicolás", SL: "San Lorenzo", AS: "Arroyo Seco", ROS: "Rosario", LP: "Las Palmas", DD: "Delta Dock", ZAR: "Zárate", SP: "San Pedro", RAM: "Ramallo", VC: "Villa Const.", GL: "Gral. Lagos" };
+  var times = {}, raw = store("horas") || {};
+  var REF = 0, refInp = null, statusEl = null;
+
+  var MOVS = { vc_ros: 1, ros_sl: 1, mv: 1 };
+  var SHIFTMODE = false, SHIFTED = 0;
+  function calTxt(c) { return String(c).replace(".", ","); }
+  function marea(s) { return s.dir === "B" && s.cal && s.cal >= P.marea && s.legs && s.legs[0] && s.legs[0].port === "ESC"; }
+  function presOf(port) { return port === "AS" ? P.pas : AN[port]; }
+  function legsFor(route) {
+    if (route === "as_zc") return [{ port: "ESC", h: P.asEsc }, { port: "ZC", h: P.asZc }];
+    if (route === "sl_zc") return [{ port: "ESC", h: P.slEsc }, { port: "ZC", h: P.slZc }];
+    if (route === "sl_cp") return [{ port: "CPNA", h: P.slCp }, { port: "CPNA", h: P.slCp }];
+    if (route === "gl_zc") return [{ port: "ESC", h: P.glEsc }, { port: "ZC", h: P.glZc }];
+    if (route === "gl_cp") return [{ port: "CPNA", h: P.glEsc }, { port: "CPNA", h: P.glEsc }];
+    if (route === "vc_ros") return [{ port: "ROS", h: P.vcros }];
+    if (route === "ros_sl") return [{ port: "SL", h: P.rossl }];
+    if (route === "np_sl") return [{ port: "SL", h: P.npsl }, { port: "SL", h: P.npsl }];
+    if (route === "np_lp") return [{ port: "LP", h: P.nplp }, { port: "LP", h: P.nplp }];
+    if (route === "cp_zc") return [{ port: "ZC", h: P.cpzc }];
+    if (route === "zc_cp") return [{ port: "CPNA", h: P.cpzc }];
+    if (route === "zc_as") return [{ port: "AS", h: P.as }, { port: "AS", h: P.as }];
+    if (route === "zc_sn") return [{ port: "SN", h: P.sn }, { port: "SN", h: P.sn }];
+    return [{ port: "SN", h: P.sn }, { port: "SL", h: P.sl }];
+  }
+
+  function simulate() {
+    var ps = PILOTS.map(function (p, i) {
+      return { i: i, n: p.n, key: p.key, avail: p.avail, base: p.base, segs: [], free: [], hist: [], st: p.enter !== undefined ? p.enter : p.key, entries: [], enter: p.enter, enter0: p.enter, ord: p.ord, leaveAt: p.leaveAt };
+    });
+    var ships = [];
+    SHIPS.forEach(function (s) {
+      var t = s.pending ? times[s.id] : s.t;
+      if (SHIFTMODE && !s.fixed && !s.pending && typeof t === "number" && !MOVS[s.route]) { var bk = histBucket(s.dir, t - REF); if (bk && bk.med > 0.5) { t += bk.med; SHIFTED++; } }
+      var vencida = false;
+      if (typeof t === "number" && t < REF - 1e-9 && !s.fixed && REF - t <= 24) { t = REF + 1; vencida = true; }
+      if (typeof t !== "number" || (t < REF - 1e-9 && !s.fixed)) return;
+      ships.push({ vencida: vencida, deExcel: !!s.deExcel, fixed: s.fixed || null, fixedAt: s.fixedAt,  id: s.id, n: s.n, dir: s.dir, route: s.route, t: t, call: vencida ? REF : t - 5, ext: s.ext, legs: s.route === "mv" ? [{ port: s.mv.to, h: Math.abs(s.mv.kmB - s.mv.kmA) / 1.852 / (s.mv.kmB > s.mv.kmA ? P.knS : P.knB) }] : (s.route === "cp_zc" && s.np === 2) ? [{ port: "ESC", h: P.cpzc - 1.5 }, { port: "ZC", h: P.cpzc }] : legsFor(s.route), np: s.np || 2, cal: s.cal || null, mv: s.mv });
+    });
+    ships.sort(function (a, b) { return a.call - b.call; });
+
+    function assign(p, s, at, leg, r) {
+      var dis = s.t + (s.dir === "B" && !MOVS[s.route] && !s.fixed ? P.ent : 0) + leg.h, pr = presOf(leg.port);
+      if (at > p.avail) p.free.push([p.avail, at]);
+      p.segs.push([at, dis, "asig", s.n]);
+      p.segs.push([dis, dis + pr, "pres"]);
+      p.segs.push([dis + pr, dis + pr + 6, "rest"]);
+      p.hist.push([p.st, s.call]);
+      p.enter = undefined;
+      p.st = dis + pr;
+      p.avail = dis + pr + 6;
+      p.key = dis + pr;
+      r.ret.push({ n: p.n, at: p.avail, port: leg.port, key: dis + pr });
+    }
+
+    var init = ps.map(function (p) { return { n: p.n, key: p.key, avail: p.avail }; });
+    var res = [];
+    ships.forEach(function (s) {
+      // Se llama por orden de pizarra: el n.º 1 y así sucesivamente, aunque esté descansando.
+      // Solo cuentan los que ya entraron a la lista al momento del llamado (presentación <= llamado).
+      var need = s.np || 2;
+      var elig = ps.filter(function (p) { return p.key <= s.call + 1e-9 && (p.enter === undefined || p.enter <= s.call + 1e-9) && (p.leaveAt === undefined || s.call < p.leaveAt - 1e-9); }).sort(function (x, y) { return x.key - y.key; });
+      var take = elig.slice(0, need);
+      var fxIdx = [];
+      if (s.fixed) { take = []; s.fixed.forEach(function (nm, j) { var q = ps.filter(function (p) { return p.n.toLowerCase() === nm.toLowerCase(); })[0]; if (q) { take.push(q); fxIdx.push(j); } }); }
+      var r = { s: s, status: "ok", note: "", ret: [] };
+      r.snap = ps.map(function (p) { return { n: p.n, key: p.key, avail: p.avail }; });
+      r.taken = take.map(function (p) { return p.n; });
+      var okP = take.filter(function (p) { return p.avail <= s.t + 1e-9; });
+      var lateP = take.filter(function (p) { return p.avail > s.t + 1e-9; });
+      var at0 = s.fixed ? Math.min(s.fixedAt || s.t, s.t) : Math.max(s.call, REF);
+      if (s.fixed && take.length) {
+        take.forEach(function (p, j) { assign(p, s, at0, s.legs[fxIdx[j]] || s.legs[0], r); });
+        r.note = s.fixed.join(" y ") + " designado" + (s.fixed.length > 1 ? "s" : "") + " en la guardia de Rosario" + (s.t < REF ? " (ya salió)." : ".") + (s.ext && s.ext.length ? " " + s.ext.join(" y ") + (s.ext.length > 1 ? " son externos" : " es externo") + ": no entra" + (s.ext.length > 1 ? "n" : "") + " a la cola." : "");
+      } else if (take.length < need) {
+        r.status = "falta";
+        r.note = "En la lista hay " + take.length + " y el barco necesita " + need + (take.length ? " (" + take[0].n + ")" : "") + ".";
+        take.forEach(function (p, j) { assign(p, s, at0, s.legs[j], r); });
+      } else if (lateP.length === 0) {
+        var desc = take.filter(function (p) { return p.avail > s.call + 1e-9; });
+        take.forEach(function (p, j) { assign(p, s, at0, s.legs[j], r); });
+        r.note = (need === 1 ? take[0].n + " sale solo (1 práctico)." : take[0].n + " y " + take[1].n + " salen juntos.") +
+          (desc.length ? " " + desc.map(function (p) { return p.n; }).join(" y ") + (desc.length > 1 ? " terminan" : " termina") + " el descanso antes de embarcar." : "");
+      } else if (s.dir === "B" && okP.length >= 1 && need === 2) {
+        okP.forEach(function (p) { assign(p, s, at0, s.legs[0], r); });
+        var lp = lateP[0], inc = lp.avail;
+        assign(lp, s, inc, s.legs[1], r);
+        r.status = "uno";
+        r.note = okP[0].n + " sale primero. " + lp.n + " se incorpora el " + fmt(inc) + ".";
+      } else {
+        r.status = "falta";
+        r.note = lateP.map(function (p) { return p.n + " descansa hasta " + fmt(p.avail); }).join(" y ") + ", después de la salida del barco.";
+        take.forEach(function (p, j) { assign(p, s, at0, s.legs[j], r); });
+      }
+      if (r.status === "falta") r.note += " Hay que cubrir con Falcon, Campetella, Brautighan, Deleesneider o pedir práctico a otra empresa (si lo toma otra empresa, anotalo en Compensaciones).";
+      res.push(r);
+    });
+    ps.forEach(function (p) { p.free.push([p.avail, 1e9]); if (p.leaveAt === undefined) p.hist.push([p.st, 1e9]); else if (p.st < p.leaveAt) p.hist.push([p.st, p.leaveAt]); });
+    function posAt(T, self) {
+      var c = 0;
+      ps.forEach(function (q) {
+        if (q === self) return;
+        for (var i = 0; i < q.hist.length; i++) { var a0 = q.hist[i][0]; if (a0 <= T + 1e-9 && T < q.hist[i][1] - 1e-9) { if (Math.abs(a0 - T) < 1e-6 && q.i > self.i) continue; c++; break; } }
+      });
+      return c + 1;
+    }
+    ps.forEach(function (p) {
+      p.hist.forEach(function (h) { if (h[0] > REF) p.entries.push({ t: h[0], pos: posAt(h[0], p) }); });
+    });
+    res.forEach(function (r) {
+      r.ret.forEach(function (x) {
+        ps.forEach(function (p) { if (p.n === x.n) p.entries.forEach(function (en) { if (Math.abs(en.t - x.key) < 1e-6) x.pos = en.pos; }); });
+      });
+    });
+    return { ps: ps, res: res, init: init };
+  }
+
+  function freeAt(ps, t) {
+    var n = 0;
+    ps.forEach(function (p) {
+      for (var i = 0; i < p.free.length; i++) { if (p.free[i][0] <= t && t < p.free[i][1]) { n++; break; } }
+    });
+    return n;
+  }
+
+  var FR3 = [{ a: 0, b: 12, l: "AM" }, { a: 12, b: 18, l: "PM" }, { a: 18, b: 24, l: "Noche" }];
+  function score(r) { return r.status === "ok" ? 1 : (r.status === "uno" ? 0.75 : r.taken.length / (r.s.np || 2)); }
+  function semOf(p) { return p >= 1 - 1e-9 ? "ok" : (p >= 0.75 ? "uno" : "falta"); }
+  function untilTxt(t) {
+    var d = t - REF;
+    if (d < 0) return "ya pasó";
+    return "en " + (Math.round(d * 10) / 10) + " h";
+  }
+
+  function renderPanel(sim) {
+    var host = document.getElementById("pan");
+    host.textContent = "";
+    var hod = ((REF % 24) + 24) % 24;
+    var corte = hod < 11 ? "Mañana" : (hod < 16.5 ? "Mediodía" : "Tarde-noche");
+    var win = sim.res.filter(function (r) { return r.s.call >= REF - 1e-9 && r.s.call < REF + 24; });
+    var worst = "ok", names = [];
+    win.forEach(function (r) {
+      if (r.status === "falta") { worst = "falta"; }
+      else if (r.status === "uno" && worst === "ok") { worst = "uno"; }
+    });
+    win.forEach(function (r) { if (r.status === worst && worst !== "ok") names.push(r.s.n); });
+
+    // ── Estado de los próximos días: estamos bien / comprometidos / sin definir ──
+    var dA0 = Math.floor(REF / 24), dq;
+    function onTripAt(q) { return q.base.concat(q.segs).some(function (s) { return (s[2] === "nav" || s[2] === "asig") && s[0] <= REF + 1e-9 && REF < s[1] - 1e-9; }); }
+    var eb0 = el("est");
+    eb0.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;";
+    for (dq = dA0; dq < dA0 + 4; dq++) (function (dd) {
+      var rs = sim.res.filter(function (r) { return r.s.t >= REF - 0.5 && Math.floor(r.s.t / 24) === dd; });
+      var pn0 = PEND.filter(function (p) { return typeof times[p.id] !== "number" && p.dayHint != null && Math.floor(p.dayHint / 24) === dd; });
+      var nF = rs.filter(function (r) { return r.status === "falta"; }).length;
+      var nU = rs.filter(function (r) { return r.status === "uno" || /termina[n]? el descanso/.test(r.note) || marea(r.s); }).length;
+      var st, lb, sub;
+      if (nF) { st = "falta"; lb = "Comprometidos"; sub = "falta cubrir " + nF + " servicio" + (nF > 1 ? "s" : ""); }
+      else if (nU) { st = "uno"; lb = "Comprometidos"; sub = nU + " justo" + (nU > 1 ? "s" : "") + " (descanso o un solo práctico)"; }
+      else if (pn0.length) { st = "none"; lb = "Sin definir"; sub = pn0.length + " servicio" + (pn0.length > 1 ? "s" : "") + " sin hora"; }
+      else { st = rs.length ? "ok" : "ok"; lb = "Estamos bien"; sub = rs.length ? "todo cubierto" : "sin movimientos"; }
+      if (pn0.length && st !== "none") sub += " · " + pn0.length + " sin hora";
+      var card = el("estc"); card.style.cssText = "background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;";
+      var h = el("", "span"); h.style.cssText = "font-weight:700;font-size:15px;"; h.textContent = (dd === dA0 ? "Hoy" : (dd === dA0 + 1 ? "Mañana" : "")) + (dd <= dA0 + 1 ? " · " : "") + dayLbl(24 * dd);
+      var row0 = el("", "span"); row0.style.cssText = "display:flex;align-items:center;gap:8px;";
+      var dt = el("dot " + st, "span"); dt.style.cssText = "width:28px;height:28px;flex:0 0 28px;";
+      var t0 = el("", "span"); t0.style.cssText = "font-weight:700;font-size:17px;"; t0.textContent = lb;
+      row0.appendChild(dt); row0.appendChild(t0);
+      var s0 = el("mono"); var nDsp = rs.reduce(function (a, r) { return a + (r.s.np || 2); }, 0); s0.textContent = rs.length + " servicio" + (rs.length === 1 ? "" : "s") + " · " + nDsp + " despacho" + (nDsp === 1 ? "" : "s") + " · " + sub;
+      card.appendChild(h); card.appendChild(row0); card.appendChild(s0); eb0.appendChild(card);
+    })(dq);
+    host.appendChild(eb0);
+
+    var v = el("verd");
+    v.appendChild(el("dot big " + (win.length ? worst : "none"), "span"));
+    var tx = el("tx");
+    var b = document.createElement("b");
+    b.textContent = !win.length ? "Sin llamados" : (worst === "ok" ? "Cubierto" : (worst === "uno" ? "Se aprieta" : "Falta gente"));
+    var sp2 = el("", "span");
+    sp2.textContent = "Proyección " + corte + " · desde el " + fmt(REF) + ". " + (!win.length ? "No hay barcos con hora en las próximas 24 h." :
+      (worst === "ok" ? "Todos los barcos de las próximas 24 h tienen sus prácticos." :
+        (worst === "uno" ? "Sale 1 y el segundo se incorpora después: " + names.join(", ") + "." : "No alcanzan los prácticos para: " + names.join(", ") + ".")));
+    tx.appendChild(b); tx.appendChild(sp2); v.appendChild(tx);
+    var gd = el("gd");
+    var gl = document.createElement("label"); gl.htmlFor = "ref"; gl.textContent = "Proyección desde";
+    gd.appendChild(gl); gd.appendChild(refInp);
+    var nb = document.createElement("button"); nb.type = "button"; nb.className = "btn"; nb.textContent = MODE === "demo" ? "Hora del dato" : "Ahora";
+    nb.addEventListener("click", function () { followNow = true; resetRef(); render(); });
+    gd.appendChild(nb);
+    v.appendChild(gd);
+    host.appendChild(v);
+
+    // ── Análisis: cuántos prácticos hay y cuántos despachos ──
+    (function () {
+      var enL = 0, nav = 0;
+      sim.ps.forEach(function (q) { if (q.enter0 !== undefined && q.enter0 > REF + 1e-9) return; if (onTripAt(q)) nav++; else enL++; });
+      var dsp = sim.res.filter(function (r) { return r.s.t >= REF - 0.5 && r.s.t < 24 * (dA0 + 4); });
+      var sb = dsp.filter(function (r) { return !MOVS[r.s.route] && r.s.dir === "S"; }).length;
+      var mv = dsp.filter(function (r) { return MOVS[r.s.route]; }).length;
+      var bj = dsp.length - sb - mv;
+      var ok = dsp.filter(function (r) { return r.status === "ok" && !/termina[n]? el descanso/.test(r.note); }).length;
+      var ju = dsp.filter(function (r) { return r.status === "uno" || (r.status === "ok" && /termina[n]? el descanso/.test(r.note)); }).length;
+      var fa = dsp.filter(function (r) { return r.status === "falta"; }).length;
+      var rb = el("pl res"); var rh = document.createElement("h3"); rh.textContent = "Análisis"; rb.appendChild(rh);
+      var l1 = el("m"); l1.style.fontSize = "16px";
+      l1.textContent = "Prácticos: " + enL + " en lista, " + nav + " navegando" + (NFUERA ? ", " + NFUERA + " de franco o licencia" : "") + ".";
+      var l2 = el("m"); l2.style.fontSize = "16px";
+      var nDsp2 = dsp.reduce(function (a, r) { return a + (r.s.np || 2); }, 0); l2.textContent = "Hasta " + dayLbl(24 * (dA0 + 3)) + ": " + dsp.length + " servicios (" + sb + " suben, " + bj + " bajan" + (mv ? ", " + mv + " movimiento" + (mv > 1 ? "s" : "") : "") + ") = " + nDsp2 + " despachos (prácticos). Servicios cubiertos " + ok + ", justos " + ju + ", sin cobertura " + fa + ".";
+      rb.appendChild(l1); rb.appendChild(l2); host.appendChild(rb);
+    })();
+
+    // ── Agenda: hoy, mañana y los dos días siguientes ──
+    var ab = el("pl agenda"); var ah = document.createElement("h3"); ah.textContent = "Qué pasa: hoy, mañana y los días siguientes"; ab.appendChild(ah);
+    var dA = Math.floor(REF / 24), dd;
+    for (dd = dA; dd < dA + 4; dd++) {
+      var dh = el("agd"); dh.textContent = (dd === dA ? "Hoy · " : (dd === dA + 1 ? "Mañana · " : "")) + dayLbl(24 * dd);
+      dh.style.cssText = "font-weight:700;margin:14px 0 4px;font-size:15px;";
+      ab.appendChild(dh);
+      var dayRs = sim.res.filter(function (r) { return r.s.t >= REF - 0.5 && Math.floor(r.s.t / 24) === dd; }).sort(function (a, b) { return a.s.t - b.s.t; });
+      if (!dayRs.length) { var nn = el("mono"); nn.textContent = "Sin barcos con hora"; ab.appendChild(nn); }
+      dayRs.forEach(function (r) {
+        var it = el("it"); it.appendChild(el("dot " + r.status, "span"));
+        var m = el("m"); var bb = document.createElement("b");
+        bb.textContent = fmtH(r.s.t) + "  " + r.s.n; m.appendChild(bb);
+        var tg = (MOVS[r.s.route] ? "movimiento" : (r.s.dir === "S" ? "sube" : "baja"));
+        var sm = document.createElement("small");
+        var quienes = (r.taken && r.taken.length ? r.taken.join(" y ") : "sin práctico") + (r.s.ext && r.s.ext.length ? " + " + r.s.ext.join(" y ") + " (externo)" : "");
+        sm.textContent = tg + (r.s.t > REF + 24 ? " · hora estimada" + slipTxt(r.s) : "") + (r.s.cal ? " · " + calTxt(r.s.cal) + " m" : "") + (r.s.vencida ? " · HORA VENCIDA, sin confirmar (se supone que sale de un momento a otro)" : "") + " · llamado " + fmtH(r.s.call) + " · " + quienes + (r.status === "falta" ? " · FALTAN PRÁCTICOS" : (r.status === "uno" ? " · sale 1 y el otro se incorpora" : ""));
+        m.appendChild(sm); it.appendChild(m); ab.appendChild(it);
+      });
+    }
+    host.appendChild(ab);
+    // ── Para resolver: lo que el operador tiene que mirar primero ──
+    var todo = [];
+    sim.res.forEach(function (r) {
+      if (r.s.t < REF - 0.5) return;
+      var quien = MOVS[r.s.route] ? "Sale " : (r.s.dir === "S" ? "Recala " : "Sale ");
+      var cuando = quien + fmt(r.s.t) + " (llamado " + fmtH(r.s.call) + ")";
+      if (r.status === "falta") todo.push({ st: "falta", t: r.s.call, tx: r.s.n + " · " + cuando + ": faltan prácticos. " + r.note });
+      else if (r.status === "uno") todo.push({ st: "uno", t: r.s.call, tx: r.s.n + " · " + cuando + ": " + r.note });
+      else if (/termina[n]? el descanso/.test(r.note)) todo.push({ st: "uno", t: r.s.call, tx: r.s.n + " · " + cuando + ": descanso justo. " + r.note.replace(/^.*?(salen juntos|sale solo)[^.]*\.\s*/, "") });
+      if (marea(r.s)) todo.push({ st: "uno", t: r.s.call, tx: r.s.n + " · " + cuando + ": con " + calTxt(r.s.cal) + " m puede esperar marea en Escobar." });
+    });
+    PEND.filter(function (p) { return typeof times[p.id] !== "number"; }).forEach(function (p) { todo.push({ st: "uno", t: 1e9, tx: p.n + ": falta cargar la hora de salida." }); });
+    todo.sort(function (a, b) { return a.t - b.t; });
+    var tb = el("pl todo"); var th = document.createElement("h3"); th.textContent = "Para resolver"; tb.appendChild(th);
+    if (!todo.length) { var tn = el("mono"); tn.textContent = "Nada pendiente: todos los barcos con hora tienen sus prácticos."; tb.appendChild(tn); }
+    todo.forEach(function (x) {
+      var it = el("it"); it.appendChild(el("dot " + x.st, "span"));
+      var m = el("m"); m.textContent = x.tx; it.appendChild(m); tb.appendChild(it);
+    });
+    host.appendChild(tb);
+
+    // ── Compensaciones con otras empresas (se guarda en este navegador) ──
+    (function () {
+      var CK = "comp", list = [];
+      try { list = JSON.parse(localStorage.getItem("mpproy:" + CK) || "[]") || []; } catch (e) { list = []; }
+      function save() { try { localStorage.setItem("mpproy:" + CK, JSON.stringify(list)); } catch (e) { } }
+      var cb = el("pl comp"); var chh = document.createElement("h3"); chh.textContent = "Compensaciones con otras empresas"; cb.appendChild(chh);
+      var bal = {};
+      list.forEach(function (x) { bal[x.emp] = (bal[x.emp] || 0) + (x.tipo === "di" ? 1 : -1); });
+      var emps = Object.keys(bal).filter(function (k) { return bal[k] !== 0; });
+      if (!emps.length) { var n0 = el("mono"); n0.textContent = "Sin saldos pendientes."; cb.appendChild(n0); }
+      emps.forEach(function (k) {
+        var m = el("m"); var b0 = document.createElement("b");
+        b0.textContent = k + ": " + (bal[k] > 0 ? "te deben " + bal[k] + " barco" + (bal[k] > 1 ? "s" : "") : "les debés " + (-bal[k]) + " barco" + (bal[k] < -1 ? "s" : ""));
+        m.appendChild(b0); cb.appendChild(m);
+      });
+      list.forEach(function (x, i) {
+        var m = el("m"); var s = document.createElement("small");
+        s.textContent = x.f + " · " + x.emp + " · " + (x.tipo === "di" ? "les diste " : "te cubrieron ") + (x.buque || "un barco") + " ";
+        var del = document.createElement("button"); del.type = "button"; del.className = "btn"; del.textContent = "Compensado";
+        del.addEventListener("click", function () { list.splice(i, 1); save(); render(); });
+        m.appendChild(s); m.appendChild(del); cb.appendChild(m);
+      });
+      var f = el("gd");
+      var ie = document.createElement("input"); ie.placeholder = "Empresa"; ie.setAttribute("aria-label", "Empresa"); ie.style.cssText = "font:inherit;padding:8px;min-width:0;flex:1 1 120px;";
+      var ib = document.createElement("input"); ib.placeholder = "Buque"; ib.setAttribute("aria-label", "Buque"); ib.style.cssText = "font:inherit;padding:8px;min-width:0;flex:1 1 120px;";
+      var sel = document.createElement("select"); sel.setAttribute("aria-label", "Tipo"); sel.style.cssText = "font:inherit;padding:8px;";
+      [["di", "Les di un barco (me deben)"], ["rec", "Me cubrieron un barco (les debo)"]].forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
+      var ad = document.createElement("button"); ad.type = "button"; ad.className = "btn"; ad.textContent = "Anotar";
+      ad.addEventListener("click", function () {
+        if (!ie.value.trim()) { ie.focus(); return; }
+        var d0 = new Date();
+        list.push({ emp: ie.value.trim(), buque: ib.value.trim(), tipo: sel.value, f: d0.getDate() + "/" + (d0.getMonth() + 1) });
+        save(); render();
+      });
+      f.appendChild(ie); f.appendChild(ib); f.appendChild(sel); f.appendChild(ad); cb.appendChild(f);
+      var nt = el("note"); nt.textContent = "Queda guardado en este navegador. Cuando no se cubre un barco y lo toma otra empresa, anotalo acá para devolverlo después.";
+      cb.appendChild(nt);
+      host.appendChild(cb);
+    })();
+
+    // ── ¿Voy a estar? Consulta de un práctico para una fecha ──
+    (function () {
+      SHIFTMODE = true; SHIFTED = 0; var sim2 = simulate(); SHIFTMODE = false; if (!SHIFTED) sim2 = null;
+      var vb = el("pl voy"); var vh = document.createElement("h3"); vh.textContent = "¿Voy a estar?"; vb.appendChild(vh);
+      var nt0 = el("note"); nt0.textContent = "Elegí un práctico y una fecha: te dice dónde estaría según los barcos programados hoy. Más allá del último barco programado es solo una referencia.";
+      vb.appendChild(nt0);
+      var f = el("gd");
+      var sel = document.createElement("select"); sel.setAttribute("aria-label", "Práctico"); sel.style.cssText = "font:inherit;padding:8px;";
+      sim.ps.map(function (q) { return q.n; }).sort().forEach(function (n) { var o = document.createElement("option"); o.value = n; o.textContent = n; sel.appendChild(o); });
+      var inp = document.createElement("input"); inp.type = "datetime-local"; inp.setAttribute("aria-label", "Fecha y hora"); inp.style.cssText = "font:inherit;padding:8px;";
+      function iso(t) { var d = dOf(t); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + "T" + p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+      var saved = voyState;
+      if (saved && saved.n) sel.value = saved.n;
+      inp.value = saved && saved.v ? saved.v : iso(Math.floor(REF / 24) * 24 + 72 + 12);
+      f.appendChild(sel); f.appendChild(inp); vb.appendChild(f);
+      var out = el("m"); out.style.cssText = "font-size:16px;display:flex;flex-direction:column;gap:4px;"; vb.appendChild(out);
+      function calc() {
+        voyState = { n: sel.value, v: inp.value };
+        out.textContent = "";
+        var T = (new Date(inp.value).getTime() - T0) / H;
+        if (isNaN(T)) { out.textContent = "Elegí una fecha."; return; }
+        function describe(S, title) {
+          var box = el(""); box.style.cssText = "display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:8px;";
+          var hh2 = el("mono"); hh2.style.fontWeight = "700"; hh2.textContent = title; box.appendChild(hh2);
+          var outP = out; out = box;
+        var q = S.ps.filter(function (x) { return x.n === sel.value; })[0];
+        if (!q) return;
+        function line(txt, strong) { var d = el(strong ? "" : "mono"); if (strong) d.style.fontWeight = "700"; d.textContent = txt; out.appendChild(d); }
+        var seg0 = q.base.concat(q.segs).filter(function (s) { return s[0] <= T + 1e-9 && T < s[1] - 1e-9; });
+        var lastCall = S.res.length ? Math.max.apply(null, S.res.map(function (r) { return r.s.call; })) : REF;
+        var asg = seg0.filter(function (s) { return s[2] === "asig" || s[2] === "nav"; })[0];
+        var pr = seg0.filter(function (s) { return s[2] === "pres"; })[0];
+        var rs0 = seg0.filter(function (s) { return s[2] === "rest"; })[0];
+        var nextCalls = S.res.filter(function (r) { return r.taken && r.taken.indexOf(q.n) >= 0 && r.s.call >= T - 1e-9 && r.s.call <= T + 24; });
+        if (q.enter0 !== undefined && T < q.enter0 - 1e-9 && !seg0.length) { line("Estaría de franco: vuelve a la lista el " + fmt(q.enter0) + ". Tiene que avisar a los operadores antes de ingresar.", true); }
+        else if (q.leaveAt !== undefined && T >= q.leaveAt - 1e-9 && !seg0.length) { line("Estaría de franco desde el " + fmt(q.leaveAt) + " (cambio de grupo de la rotación 14x14).", true); }
+        else if (asg) line("Estaría embarcado en " + (asg[3] || "un buque") + ", hasta " + fmt(asg[1]) + ". Si necesitás estar, pedí un cambio.", true);
+        else if (pr) line("Estaría llegando del viaje: entra a la lista a las " + fmt(pr[1]) + ". Puede estar, pero todavía no es llamable.", true);
+        else if (rs0) { var inR = []; S.ps.forEach(function (x) { for (var i = 0; i < x.hist.length; i++) if (x.hist[i][0] <= T + 1e-9 && T < x.hist[i][1] - 1e-9) { inR.push({ n: x.n, st: (i === 0 && x.ord !== undefined) ? x.ord : x.hist[i][0], i: x.i }); break; } }); inR.sort(function (a, b) { return a.st - b.st || a.i - b.i; }); var pr2 = 0; inR.forEach(function (x, k) { if (x.n === q.n) pr2 = k + 1; }); line("Estaría descansando hasta " + fmt(rs0[1]) + (pr2 ? ", ya anotado en la lista: lugar " + pr2 + " de " + inR.length : "") + ". No lo llaman hasta que termine el descanso.", true); }
+        else {
+          var inL = [];
+          S.ps.forEach(function (x) { for (var i = 0; i < x.hist.length; i++) if (x.hist[i][0] <= T + 1e-9 && T < x.hist[i][1] - 1e-9) { inL.push({ n: x.n, st: (i === 0 && x.ord !== undefined) ? x.ord : x.hist[i][0], i: x.i }); break; } });
+          inL.sort(function (a, b) { return a.st - b.st || a.i - b.i; });
+          var pos = 0; inL.forEach(function (x, k) { if (x.n === q.n) pos = k + 1; });
+          line("Estaría en la lista" + (pos ? ", lugar " + pos + " de " + inL.length : "") + ".", true);
+        }
+        nextCalls.forEach(function (r) { line("Lo llamarían para " + r.s.n + " (llamado " + fmt(r.s.call) + ", sale " + fmt(r.s.t) + "). Si ese día necesitás estar, pedí un cambio.", false); });
+        if (!asg && !nextCalls.length) line("Con los barcos programados hoy no tiene llamado en las 24 h siguientes a esa hora.", false);
+        if (T > lastCall + 1e-9) line("Ojo: es posterior al último barco programado (" + fmt(lastCall) + "). Pueden aparecer barcos nuevos.", false);
+                out = outP; outP.appendChild(box);
+        }
+        describe(sim, "Si los barcos salen a la hora estimada");
+        if (sim2) describe(sim2, "Si se demoran lo habitual los barcos con hora sin confirmar");
+      }
+      sel.addEventListener("change", calc); inp.addEventListener("change", calc);
+      calc();
+      var vh2 = document.getElementById("voyhost"); vh2.textContent = ""; vh2.appendChild(vb);
+    })();
+
+    var cols = el("pcols");
+    function listBox(title, rs) {
+      var bx = el("pl"); var h = document.createElement("h3"); h.textContent = title; bx.appendChild(h);
+      if (!rs.length) { var n = el("mono"); n.textContent = "Nada en este tramo"; bx.appendChild(n); }
+      rs.forEach(function (r) {
+        var it = el("it");
+        it.appendChild(el("dot " + r.status, "span"));
+        var m = el("m");
+        var bb = document.createElement("b"); bb.textContent = r.s.n; m.appendChild(bb);
+        m.appendChild(document.createTextNode(" · llamado " + fmtH(r.s.call) + " (" + untilTxt(r.s.call) + ")"));
+        var sm = document.createElement("small");
+        sm.textContent = (MOVS[r.s.route] ? "Sale " : (r.s.dir === "S" ? "Recala " : "Sale ")) + fmt(r.s.t) + " · " + r.note.split(". ")[0].replace(/\.$/, "");
+        m.appendChild(sm); it.appendChild(m); bx.appendChild(it);
+      });
+      return bx;
+    }
+    cols.appendChild(listBox("Lo inmediato: próximas 12 h", sim.res.filter(function (r) { return r.s.call >= REF - 1e-9 && r.s.call < REF + 12; })));
+    cols.appendChild(listBox("Después: 12 a 24 h", sim.res.filter(function (r) { return r.s.call >= REF + 12 && r.s.call < REF + 24; })));
+
+    var en = [];
+    sim.ps.forEach(function (p) { p.entries.forEach(function (e0) { if (e0.t > REF && e0.t <= REF + 12) en.push({ n: p.n, key: e0.t, pos: e0.pos }); }); });
+    en.sort(function (x, y) { return x.key - y.key; });
+    var eb = el("pl"); var eh = document.createElement("h3"); eh.textContent = "Entran a la lista: próximas 12 h"; eb.appendChild(eh);
+    if (!en.length) { var n2 = el("mono"); n2.textContent = "Nadie entra"; eb.appendChild(n2); }
+    en.forEach(function (x) { var l = el("m"); l.textContent = x.n + " · " + fmtH(x.key) + " (" + untilTxt(x.key) + ") · lugar " + x.pos; eb.appendChild(l); });
+    var pn = PEND.filter(function (p) { return typeof times[p.id] !== "number"; });
+    if (pn.length) {
+      var w = el("warnl");
+      w.textContent = "Sin hora: " + pn.map(function (p) { return p.n; }).join(", ") + ".";
+      eb.appendChild(w);
+    }
+    cols.appendChild(eb);
+    host.appendChild(cols);
+
+    var gb = el("pl"); var gh = document.createElement("h3"); gh.textContent = "Semáforo por día y franja"; gb.appendChild(gh);
+    var g = el("sg");
+    g.appendChild(el("h", "span"));
+    FR3.forEach(function (f) { var h = el("h", "span"); h.textContent = f.l; g.appendChild(h); });
+    var d0 = Math.floor(REF / 24), d;
+    for (d = d0; d < d0 + 3; d++) {
+      var dl = el("d", "span"); dl.textContent = dayLbl(24 * d); g.appendChild(dl);
+      FR3.forEach(function (f) {
+        var rs = sim.res.filter(function (r) { return r.s.call >= 24 * d + f.a - 1e-9 && r.s.call < 24 * d + f.b - 1e-9; });
+        var cell = el("c" + (24 * d + f.b <= REF ? " past" : ""));
+        if (!rs.length) {
+          cell.appendChild(el("dot none", "span"));
+          var t0 = el("", "span"); t0.textContent = "—"; cell.appendChild(t0);
+        } else {
+          var sc = 0; rs.forEach(function (r) { sc += score(r); });
+          var p = sc / rs.length;
+          cell.appendChild(el("dot " + semOf(p), "span"));
+          var t1 = el("", "span"); t1.textContent = Math.round(p * 100) + "%";
+          var sm2 = document.createElement("small"); sm2.textContent = rs.map(function (r) { return r.s.n; }).join(", ");
+          t1.appendChild(sm2); cell.appendChild(t1);
+        }
+        g.appendChild(cell);
+      });
+    }
+    gb.appendChild(g);
+    var lg = el("note"); lg.textContent = "Cobertura por franja según la hora de llamado. Verde 100%: salen todos con 2. Amarillo 75% a 99%: un barco de bajada sale con 1. Rojo menos de 75%: faltan prácticos.";
+    gb.appendChild(lg);
+    host.appendChild(gb);
+  }
+
+  function seg(track, s, e, cls, text) {
+    var a = Math.max(s, W0), b = Math.min(e, W1);
+    if (b <= a) return;
+    var d = el("seg " + cls);
+    d.style.left = X(a) + "px";
+    d.style.width = Math.max((b - a) * PX, 2) + "px";
+    if (text) d.textContent = text;
+    track.appendChild(d);
+  }
+  function row(cls, label, labCls, trackW) {
+    var r = el("r " + cls);
+    var l = el("lab " + (labCls || "")); l.textContent = label; l.title = label;
+    var t = el("trk"); t.style.width = trackW + "px";
+    r.appendChild(l); r.appendChild(t);
+    return { r: r, t: t };
+  }
+
+  function render() {
+    renderStats();
+    W0 = Math.floor(REF) - 3; W1 = W0 + SPAN; CHW = SPAN * PX;
+    var sim = simulate(); window.__sim = sim; window.__T0 = T0;
+    var inner = document.getElementById("inner");
+    inner.textContent = "";
+    inner.style.width = (LBL + CHW) + "px";
+    document.getElementById("sub").textContent = "Cada práctico vuelve a estar libre a su hora de presentación del Anexo I más 6 h de descanso. Cada barco se llama 5 h antes de su salida. Ventana: " + dayLbl(W0) + " " + p2(((W0 % 24) + 24) % 24) + ":00 a " + dayLbl(W1) + ".";
+
+    var ax = row("axis", "", "sm", CHW);
+    var t;
+    for (t = Math.ceil(W0 / 3) * 3; t <= W1; t += 3) {
+      var tk = el("tick"); tk.style.left = X(t) + "px"; tk.textContent = p2(((t % 24) + 24) % 24);
+      ax.t.appendChild(tk);
+    }
+    var dts = [W0], q;
+    for (q = Math.ceil((W0 + 1e-9) / 24) * 24; q < W1; q += 24) dts.push(q);
+    dts.forEach(function (dt) {
+      var d = el("day"); d.style.left = X(dt) + "px";
+      d.textContent = dayLbl(dt);
+      ax.t.appendChild(d);
+    });
+    inner.appendChild(ax.r);
+
+    var cl = row("calls", "Llamados", "sm", CHW);
+    var k = 0;
+    sim.res.forEach(function (r) {
+      if (r.s.call < W0 || r.s.call > W1) return;
+      var c = el("chip " + r.status);
+      c.textContent = r.s.n + " " + fmtH(r.s.call);
+      var x = X(r.s.call);
+      c.style.top = (k % 2 === 0 ? 4 : 36) + "px";
+      if (x > CHW - 220) { c.style.right = (CHW - x) + "px"; } else { c.style.left = (x + 3) + "px"; }
+      cl.t.appendChild(c); k++;
+    });
+    inner.appendChild(cl.r);
+
+    var cr = row("chartrow", "Libres", "sm", CHW);
+    var Hh = 150, pad = 14, ymax = Math.max(PILOTS.length, 2);
+    function Y(v) { return Hh - pad - (v / ymax) * (Hh - 2 * pad); }
+    var svg = '<svg width="' + CHW + '" height="' + Hh + '" viewBox="0 0 ' + CHW + ' ' + Hh + '" role="img" aria-label="Prácticos libres por hora">';
+    var g;
+    for (g = 0; g <= ymax; g += 2) {
+      svg += '<line x1="0" x2="' + CHW + '" y1="' + Y(g) + '" y2="' + Y(g) + '" stroke="var(--line)" stroke-width="1"/>' +
+        '<text x="3" y="' + (Y(g) - 2) + '" font-size="13" font-family="IBM Plex Mono, monospace" fill="var(--muted)">' + g + '</text>';
+    }
+    var pts = [], tt;
+    for (tt = W0; tt <= W1 + 1e-9; tt += 0.25) { pts.push(((tt - W0) * PX).toFixed(1) + "," + Y(freeAt(sim.ps, tt)).toFixed(1)); }
+    svg += '<polygon points="0,' + Y(0) + ' ' + pts.join(" ") + ' ' + CHW + ',' + Y(0) + '" fill="var(--free)" opacity="0.35"/>';
+    svg += '<polyline points="' + pts.join(" ") + '" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round"/>';
+    sim.res.forEach(function (r) {
+      if (r.s.call < W0 || r.s.call > W1) return;
+      var before = freeAt(sim.ps, r.s.call - 0.001);
+      var colr = r.status === "ok" ? "var(--ok)" : (r.status === "uno" ? "var(--warn)" : "var(--bad)");
+      svg += '<circle cx="' + X(r.s.call) + '" cy="' + Y(before) + '" r="5" fill="' + colr + '" stroke="var(--surface)" stroke-width="2"/>';
+    });
+    svg += "</svg>";
+    cr.t.innerHTML = svg;
+    inner.appendChild(cr.r);
+
+    // Filas en el orden de la pizarra: cada práctico ocupa su lugar según cuándo (re)entra a la lista
+    function entryKey(q) { for (var i = 0; i < q.hist.length; i++) if (q.hist[i][1] > REF + 1e-9) return q.hist[i][0]; return 1e9; }
+    function onTrip(q) { return q.base.concat(q.segs).some(function (s) { return (s[2] === "nav" || s[2] === "asig") && s[0] <= REF + 1e-9 && REF < s[1] - 1e-9; }); }
+    var numN = 0;
+    sim.ps.slice().sort(function (a, b) { return entryKey(a) - entryKey(b) || a.i - b.i; }).forEach(function (p) {
+      if (p.enter0 !== undefined && p.enter0 > W1) return;
+      var num = onTrip(p) ? null : ++numN;
+      var pr = row("prow", (num ? num + "  " : "· ") + p.n, "", CHW);
+      p.base.forEach(function (s) { seg(pr.t, s[0], s[1], s[2], s[3]); });
+      p.free.forEach(function (f) {
+        var w = (Math.min(f[1], W1) - Math.max(f[0], W0)) * PX;
+        seg(pr.t, f[0], f[1], "free", w > 60 ? "libre" : "");
+      });
+      p.segs.forEach(function (s) { seg(pr.t, s[0], s[1], s[2], s[3]); });
+      p.entries.forEach(function (en) {
+        if (en.t < W0 || en.t > W1) return;
+        var mk = el("mk", "span"); mk.style.left = X(en.t) + "px"; mk.textContent = "#" + en.pos;
+        mk.title = p.n + " entra a la lista en el lugar " + en.pos + " (" + fmt(en.t) + ")";
+        pr.t.appendChild(mk);
+      });
+      inner.appendChild(pr.r);
+    });
+
+    var over = el("over"); over.style.width = CHW + "px";
+    sim.res.forEach(function (r) {
+      if (r.s.call < W0 || r.s.call > W1) return;
+      var v = el("vl"); v.style.left = X(r.s.call) + "px"; over.appendChild(v);
+    });
+    if (REF > W0 && REF < W1) {
+      var nv = el("vl now"); nv.style.left = X(REF) + "px"; over.appendChild(nv);
+      var nt = el("nowtag"); nt.style.left = X(REF) + "px"; nt.textContent = MODE === "demo" ? "dato" : "ahora"; over.appendChild(nt);
+    }
+    inner.appendChild(over);
+
+    renderPanel(sim);
+
+    var rh = document.getElementById("rot");
+    rh.textContent = "";
+    function rotCard(title, sub, snap, t, taken) {
+      var c = el("rotc");
+      var tt = el("ttl"); var bb = document.createElement("b"); bb.textContent = title; tt.appendChild(bb);
+      var sm = el("mono"); sm.textContent = sub; tt.appendChild(sm); c.appendChild(tt);
+      var ENT = {}; sim.ps.forEach(function (q) { if (q.enter0 !== undefined) ENT[q.n] = q.enter0; });
+      var notYet = function (p) { return ENT[p.n] !== undefined && ENT[p.n] > t + 1e-9; };
+      var inList = snap.filter(function (p) { return p.key <= t && !notYet(p); }).sort(function (x, y) { return x.key - y.key; });
+      var back = snap.filter(function (p) { return notYet(p) && ENT[p.n] <= W1; }).map(function (p) { return { n: p.n, key: ENT[p.n], avail: p.avail }; });
+      var coming = snap.filter(function (p) { return p.key > t && !notYet(p); }).concat(back).sort(function (x, y) { return x.key - y.key; });
+      var q1 = el("q"); var l1 = el("ql", "span"); l1.textContent = "En la lista"; q1.appendChild(l1);
+      inList.forEach(function (p, i) {
+        var isT = taken && taken.indexOf(p.n) >= 0;
+        var free = p.avail <= t + 1e-9;
+        var ch = el("qc " + (isT ? "tomado" : (free ? "libre" : "desc")), "span");
+        ch.textContent = (i + 1) + " " + p.n + (isT ? " → " + taken.ship : (free ? "" : " · libre " + fmtH(p.avail)));
+        q1.appendChild(ch);
+      });
+      c.appendChild(q1);
+      var q2 = el("q"); var l2 = el("ql", "span"); l2.textContent = "Por entrar"; q2.appendChild(l2);
+      coming.forEach(function (p) {
+        var ch = el("qc entra", "span");
+        ch.textContent = p.n + " · entra " + fmt(p.key);
+        q2.appendChild(ch);
+      });
+      if (!coming.length) { var none = el("mono", "span"); none.textContent = "Nadie"; q2.appendChild(none); }
+      c.appendChild(q2);
+      rh.appendChild(c);
+    }
+    rotCard("Al inicio", fmt(REF), sim.init, REF, null);
+    sim.res.forEach(function (r) {
+      var tk = r.taken.slice(); tk.ship = r.s.n;
+      rotCard("Llamado de " + r.s.n, fmt(r.s.call) + " · " + (MOVS[r.s.route] ? "mov." : (r.s.dir === "S" ? "sube" : "baja")) + " con " + (r.status === "ok" ? String(r.s.np || 2) : (r.status === "uno" ? "1 + 1 después" : "faltantes")), r.snap, r.s.call, tk);
+    });
+
+    var host = document.getElementById("res");
+    host.textContent = "";
+    if (!sim.res.length) { var nn = el("mono"); nn.textContent = "Ningún barco con hora a partir de " + fmt(REF) + "."; host.appendChild(nn); }
+    sim.res.forEach(function (r) {
+      var c = el("card");
+      var a = el(""); var b = document.createElement("b"); b.textContent = r.s.n; a.appendChild(b);
+      var tg = el("tag", "span"); tg.textContent = MOVS[r.s.route] ? "MOV." : (r.s.dir === "S" ? "SUBE" : "BAJA"); a.appendChild(tg);
+      var m = el("mono"); m.textContent = (MOVS[r.s.route] ? "Sale " : (r.s.dir === "S" ? "Recala " : "Sale ")) + fmt(r.s.t) + " · llamado " + fmt(r.s.call) + (r.s.cal ? " · calado " + calTxt(r.s.cal) + " m" : "");
+      var s = el(""); var st = el("st " + r.status, "span");
+      st.textContent = r.status === "ok" ? (r.s.np === 1 ? "Sale 1" : "Salen 2") : (r.status === "uno" ? "1 + 1 después" : "Falta");
+      s.appendChild(st); s.appendChild(document.createTextNode(r.note));
+      if (marea(r.s)) { var wm = el("warnl"); wm.textContent = "Con " + calTxt(r.s.cal) + " m puede esperar marea en Escobar: el práctico que baja ahí puede demorar y volver más tarde."; wm.style.marginTop = "4px"; s.appendChild(wm); }
+      if (r.ret.length) {
+        var rt = el("mono"); rt.style.marginTop = "4px";
+        rt.textContent = "Vuelven: " + r.ret.map(function (x) { return x.n + " (" + PORT[x.port] + ") entra a la cola " + fmt(x.key) + (x.pos ? " en el lugar " + x.pos : "") + ", libre " + fmt(x.at); }).join(" · ");
+        s.appendChild(rt);
+      }
+      c.appendChild(a); c.appendChild(m); c.appendChild(s);
+      host.appendChild(c);
+    });
+
+    var sup = document.getElementById("avisos");
+    sup.textContent = "";
+    AVISOS.forEach(function (a) { var li = document.createElement("li"); li.textContent = a; sup.appendChild(li); });
+    sup.style.display = AVISOS.length ? "" : "none";
+    document.getElementById("avtit").style.display = AVISOS.length ? "" : "none";
+  }
+
+  // ── Barcos sin hora ──
+  function parseLocal(v) { return v ? (new Date(v).getTime() - T0) / H : undefined; }
+  function buildPend() {
+    var host = document.getElementById("pend");
+    host.textContent = "";
+    PEND = SHIPS.filter(function (s) { return s.pending; });
+    document.getElementById("pendsec").style.display = PEND.length ? "" : "none";
+    PEND.forEach(function (p) {
+      var w = el("pend");
+      var a = el(""); var b = document.createElement("b"); b.textContent = p.n; a.appendChild(b);
+      var tg = el("tag", "span"); tg.textContent = p.dir === "S" ? "SUBE" : "BAJA"; a.appendChild(tg);
+      var small = el("mono"); small.textContent = (p.cal ? "Calado " + calTxt(p.cal) + " m · " : "") + (p.hint || ""); small.style.marginTop = "2px"; a.appendChild(small);
+      var inp = document.createElement("input");
+      inp.type = "datetime-local"; inp.id = "h-" + p.id;
+      inp.min = toInput(T0 - 24 * H); inp.max = toInput(T0 + 6 * 24 * H);
+      inp.setAttribute("aria-label", "Hora de " + p.n);
+      inp.value = raw[p.id] || "";
+      times[p.id] = parseLocal(inp.value);
+      inp.addEventListener("change", function () {
+        var v = inp.value;
+        if (v) raw[p.id] = v; else delete raw[p.id];
+        times[p.id] = parseLocal(v);
+        store("horas", raw);
+        render();
+      });
+      w.appendChild(a); w.appendChild(inp);
+      host.appendChild(w);
+    });
+  }
+
+  function buildRef() {
+    refInp = document.createElement("input");
+    refInp.type = "datetime-local"; refInp.id = "ref";
+    refInp.addEventListener("change", function () {
+      if (!refInp.value) { refInp.value = toInput(T0 + REF * H); return; }
+      followNow = false;
+      REF = (new Date(refInp.value).getTime() - T0) / H;
+      render();
+    });
+  }
+  var refBase = 0;
+  function resetRef() {
+    REF = (refBase - T0) / H;
+    refInp.value = toInput(refBase);
+  }
+
+  function buildParams() {
+    var host = document.getElementById("pgrid");
+    PDEF.forEach(function (d) {
+      var w = el("pp");
+      var l = document.createElement("label"); l.htmlFor = "p-" + d.k;
+      l.appendChild(document.createTextNode(d.l));
+      var em = document.createElement("em"); em.textContent = d.tag; l.appendChild(em);
+      var inp = document.createElement("input");
+      inp.type = "text"; inp.inputMode = "decimal"; inp.id = "p-" + d.k;
+      inp.value = String(P[d.k]).replace(".", ",");
+      inp.addEventListener("change", function () {
+        var v = parseFloat(inp.value.replace(",", "."));
+        if (isNaN(v) || v < 0) { inp.value = String(P[d.k]).replace(".", ","); return; }
+        P[d.k] = v;
+        var body = {}; PDEF.forEach(function (x) { body[x.k] = P[x.k]; });
+        store("params8", body);
+        render();
+      });
+      w.appendChild(l); w.appendChild(inp);
+      host.appendChild(w);
+    });
+  }
+
+  // ── Datos ──
+  function applyData(payload, mode, anchorMs, stamp) {
+    if (payload.grids) window.__lastGrids = payload.grids;
+    var res = payload.res || mpAdapter(payload.grids, anchorMs);
+    T0 = res.T0; PILOTS = res.pilots; SHIPS = res.ships; AVISOS = res.avisos; NFUERA = res.nFuera || 0;
+    MODE = mode; refBase = anchorMs; apiStamp = stamp || "";
+    buildPend();
+    if (mode !== "demo") recordLedger(anchorMs);
+    if (followNow || !refInp.value) { resetRef(); }
+    else { REF = (new Date(refInp.value).getTime() - T0) / H; }
+    var st = document.getElementById("srcst");
+    st.textContent = mode === "live"
+      ? "Datos en vivo de la guardia" + (stamp ? " · planilla actualizada " + stamp : "") + ". Se refresca solo cada 5 minutos."
+      : (mode === "pdf" && /guardada en este equipo/.test(stamp) ? "Se muestra la última guardia cargada: " + stamp + ". Cargá la nueva cuando salga." : mode === "pdf" ? "PDF del sistema cargado: " + stamp + " · leído a las " + p2(new Date().getHours()) + ":" + p2(new Date().getMinutes()) + ". Cargalo de nuevo cuando salga cada guardia." : mode === "excel" ? "Excel cargado: " + stamp + " · leído a las " + p2(new Date().getHours()) + ":" + p2(new Date().getMinutes()) + ". Cargalo de nuevo apenas salga cada guardia: las fechas de los buques en viaje se deducen de la hora de carga."
+        : DEMOMSG);
+    document.getElementById("srcdot").className = "dot " + (mode === "demo" ? "uno" : "ok");
+    render();
+  }
+
+
+  // ── Estadísticas de terminales: historial de estimaciones de cada barco ──
+  // Cada vez que se carga la guardia se anota, por barco, el coeficiente y la hora estimada.
+  // Cuando el barco aparece despachado, la hora firme queda como "real". Con eso se mide cuánto se corre la estimación.
+  var LED = store("led") || {}, COEFS = store("coef") || {};
+  function ledSave() { store("led", LED); store("coef", COEFS); }
+  function coefCls(c) { return c === null || c === undefined ? "sin coef." : (c < 100 ? "hasta 99" : (c < 140 ? "100 a 139" : "140 o más")); }
+  function termOf(s) { return String(s.desde || "?").replace(/^RADA\s+/i, "").replace(/\s*-\s*VIA.*$/i, "").replace(/\s*"?(SUR|NORTE|PPAL)"?\)?\s*$/i, "").replace(/\s*\(.*$/, "").trim(); }
+  function recordLedger(anchor) {
+    var now = anchor || Date.now(), lim = now - 90 * 864e5, k;
+    SHIPS.forEach(function (s) {
+      if (s.pending || MOVS[s.route] || typeof s.t !== "number") return;
+      if (typeof s.coef === "number") COEFS[s.n] = s.coef;
+      var key = s.n + "|" + termOf(s) + "|" + (s.dir || ""), abs = Math.round(T0 + s.t * H), e = LED[key];
+      if (!e) e = LED[key] = { n: s.n, term: termOf(s), dir: s.dir, est: [], real: null };
+      e.coef = typeof COEFS[s.n] === "number" ? COEFS[s.n] : null;
+      var last = e.est.length ? e.est[e.est.length - 1] : null;
+      if (s.fixed && s.fixed.length) { if (e.real === null) { e.real = abs; if (!last || last[1] !== abs) e.est.push([now, abs]); } }
+      else if (e.real === null && (!last || last[1] !== abs)) {
+        if (e.est.length && e.est[e.est.length - 1][0] === now) e.est[e.est.length - 1][1] = abs; else e.est.push([now, abs]);
+      }
+    });
+    for (k in LED) { var l = LED[k].est; if (!l.length || l[l.length - 1][0] < lim) delete LED[k]; }
+    ledSave();
+  }
+  function med(a) { if (!a.length) return null; var b = a.slice().sort(function (x, y) { return x - y; }), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
+  function statGroups() {
+    var g = {}, k;
+    for (k in LED) {
+      var e = LED[k]; if (e.est.length < 2) continue;
+      var first = e.est[0][1], lastE = e.est[e.est.length - 1][1], gk = e.term + (e.dir === "S" ? " (sube)" : " (baja)") + "|" + coefCls(e.coef);
+      var o = g[gk] || (g[gk] = { term: e.term + (e.dir === "S" ? " (sube)" : " (baja)"), cls: coefCls(e.coef), drift: [], real: [] });
+      o.drift.push((lastE - first) / 36e5);
+      if (e.real !== null) o.real.push((e.real - first) / 36e5);
+    }
+    return g;
+  }
+  // Curva histórica: guardias del 19 al 29/10 (29 servicios, 249 lecturas). Error = hora real de despacho menos hora estimada,
+  // según cuántas horas faltaban para la hora estimada cuando se leyó.
+  var HIST = {"SUB":[{"a":0,"b":12,"n":6},{"a":12,"b":24,"n":13,"sv":7,"p25":-4,"med":9,"p75":16},{"a":24,"b":48,"n":25,"sv":7,"p25":9.5,"med":26.8,"p75":38},{"a":48,"b":72,"n":22,"sv":6,"p25":25.4,"med":33,"p75":38},{"a":72,"b":999,"n":54,"sv":6,"p25":-34,"med":25,"p75":62}],"BAJ":[{"a":0,"b":12,"n":13,"sv":9,"p25":-4.3,"med":8,"p75":10},{"a":12,"b":24,"n":21,"sv":12,"p25":-4,"med":10,"p75":22.5},{"a":24,"b":48,"n":56,"sv":20,"p25":-6,"med":10,"p75":19},{"a":48,"b":72,"n":28,"sv":10,"p25":-8,"med":7.3,"p75":31.5},{"a":72,"b":999,"n":11,"sv":3,"p25":-14,"med":-14,"p75":-6}]};
+  function histBucket(dir, lead) {
+    var arr = HIST[dir === "S" ? "SUB" : "BAJ"], k;
+    for (k = 0; k < arr.length; k++) if (lead >= arr[k].a && lead < arr[k].b) return arr[k].sv >= 5 ? arr[k] : null;
+    return null;
+  }
+  function slipTxt(s) {
+    try {
+      if (s.fixed && s.fixed.length) return "";
+      var b = histBucket(s.dir, s.t - REF);
+      if (!b) return "";
+      function sg(v) { return (v > 0 ? "+" : "") + Math.round(v); }
+      return " (si la hora no se confirma, suele correrse " + sg(b.med) + " h; lo normal, de " + sg(b.p25) + " a " + sg(b.p75) + " h)";
+    } catch (e) { return ""; }
+  }
+  function hh(v) { return v === null ? "–" : (v > 0 ? "+" : "") + (Math.round(v * 10) / 10).toString().replace(".", ",") + " h"; }
+  function renderStats() {
+    var host = document.getElementById("sthost"); if (!host) return;
+    host.textContent = "";
+    var box = el("pl"); var h3 = document.createElement("h3"); h3.textContent = "Estadísticas de terminales"; box.appendChild(h3);
+    var keys = Object.keys(LED), nReal = keys.filter(function (k) { return LED[k].real !== null; }).length;
+    var nt = el("note");
+    nt.textContent = "Cada vez que cargás la guardia, la página anota la hora estimada de cada barco y su coeficiente (el coeficiente sale del Excel; si cargás solo el PDF se usa el último que se haya visto). Cuando el barco aparece despachado queda la hora firme. Con eso se mide cuánto se corre la estimación según la terminal y el coeficiente. Siguiendo " + keys.length + " barcos, " + nReal + " ya despachados. Se guarda en este navegador.";
+    box.appendChild(nt);
+    var gs = statGroups(), arr = Object.keys(gs).map(function (k) { return gs[k]; }).sort(function (a, b) { return b.drift.length - a.drift.length; });
+    var w = el("stw"), tb = document.createElement("table"); tb.className = "stt";
+    tb.innerHTML = "<thead><tr><th>Terminal</th><th>Coeficiente</th><th>Barcos</th><th>Se corre la estimación (mediana)</th><th>Rango</th><th>Real vs. primera estimación</th></tr></thead>";
+    var tbd = document.createElement("tbody");
+    if (!arr.length) { var tr0 = document.createElement("tr"), td0 = document.createElement("td"); td0.colSpan = 6; td0.textContent = "Todavía no hay barcos con al menos dos estimaciones. Cargá la guardia cada vez que salga y esto se va llenando."; tr0.appendChild(td0); tbd.appendChild(tr0); }
+    arr.forEach(function (o) {
+      var tr = document.createElement("tr"), mn = Math.min.apply(null, o.drift), mx = Math.max.apply(null, o.drift);
+      [o.term, o.cls, String(o.drift.length) + (o.drift.length < 5 ? " (pocos datos)" : ""), hh(med(o.drift)), hh(mn) + " a " + hh(mx), o.real.length ? hh(med(o.real)) + " (" + o.real.length + ")" : "–"].forEach(function (t, i) { var td = document.createElement("td"); if (i > 1) td.className = "num"; td.textContent = t; tr.appendChild(td); });
+      tbd.appendChild(tr);
+    });
+    tb.appendChild(tbd); w.appendChild(tb); box.appendChild(w);
+    var h4 = document.createElement("h3"); h4.textContent = "Barcos que se están siguiendo"; box.appendChild(h4);
+    var w2 = el("stw"), t2 = document.createElement("table"); t2.className = "stt";
+    t2.innerHTML = "<thead><tr><th>Barco</th><th>Coef.</th><th>Desde</th><th>Primera estimación</th><th>Última / real</th><th>Corrida</th></tr></thead>";
+    var b2 = document.createElement("tbody");
+    keys.map(function (k) { return LED[k]; }).sort(function (a, b) { return b.est[b.est.length - 1][0] - a.est[a.est.length - 1][0]; }).slice(0, 40).forEach(function (e) {
+      var f = e.est[0][1], l = e.est[e.est.length - 1][1], tr = document.createElement("tr");
+      function fm(ms) { var d = new Date(ms); return d.getDate() + "/" + (d.getMonth() + 1) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+      [e.n, e.coef === null ? "–" : String(e.coef), e.term, fm(f), fm(l) + (e.real !== null ? " (real)" : "") + (e.est.length > 1 ? " · " + e.est.length + " estim." : ""), e.est.length > 1 ? hh((l - f) / 36e5) : "–"].forEach(function (t, i) { var td = document.createElement("td"); if (i > 2) td.className = "num"; td.textContent = t; tr.appendChild(td); });
+      b2.appendChild(tr);
+    });
+    t2.appendChild(b2); w2.appendChild(t2); box.appendChild(w2);
+    var h6 = document.createElement("h3"); h6.textContent = "Cuánto se corre la hora estimada según la anticipación"; box.appendChild(h6);
+    var n6 = el("note"); n6.textContent = "Sale de las guardias del 19 al 29/10 (29 servicios, 249 lecturas): hora real de despacho menos hora estimada, según cuántas horas faltaban cuando se leyó. Positivo es que el barco salió más tarde de lo estimado. Mide las horas que todavía no estaban confirmadas: en subida, cuando el buque confirma su hora no se demora más de 1 o 2 h; en bajada se cumple la hora de pedido a bordo y el inicio formal es en promedio 1 h después, según la terminal (se ajusta en Tiempos de viaje). Es una muestra de 10 días y el coeficiente no mostró una diferencia clara.";
+    box.appendChild(n6);
+    var w6 = el("stw"), t6 = document.createElement("table"); t6.className = "stt";
+    var lb = ["menos de 12 h", "12 a 24 h", "24 a 48 h", "48 a 72 h", "más de 72 h"];
+    function cell(o) { function g(v) { return (v > 0 ? "+" : "") + String(v).replace(".", ","); } return o.sv >= 5 ? g(o.med) + " h (" + g(o.p25) + " a " + g(o.p75) + ") · " + o.sv + " serv." : "pocos datos"; }
+    t6.innerHTML = "<thead><tr><th>Faltan para la hora estimada</th><th>Subidas</th><th>Bajadas y Campana</th></tr></thead><tbody>" + lb.map(function (l, i) { return "<tr><td>" + l + "</td><td class=\"num\">" + cell(HIST.SUB[i]) + "</td><td class=\"num\">" + cell(HIST.BAJ[i]) + "</td></tr>"; }).join("") + "</tbody>";
+    w6.appendChild(t6); box.appendChild(w6);
+    var h5 = document.createElement("h3"); h5.textContent = "Ejemplos: guardias del 29 al 31/10"; box.appendChild(h5);
+    var n5 = el("note"); n5.textContent = "Lo que se vio al comparar a mano 7 guardias de esa semana. La hora estimada se corrió siempre hacia adelante. Es una muestra chica, no una estadística.";
+    box.appendChild(n5);
+    var w3 = el("stw"), t3 = document.createElement("table"); t3.className = "stt";
+    t3.innerHTML = "<thead><tr><th>Barco</th><th>Coef.</th><th>Primera estimación</th><th>Última estimación</th></tr></thead><tbody>" +
+      [["Obahan C", 95, "29/10 noche", "30/10 06:00"], ["Draftvader", 167, "30/10", "31/10 PM"], ["Estefania H", 65, "30/10", "1/11 PM"], ["Eco Diagon Alley", 182, "30/10", "1/11 AM"], ["DS Manatee", 81, "30/10", "1/11 PM"], ["Aruna ECE", 139, "30/10", "2/11"]].map(function (r) { return "<tr><td>" + r[0] + "</td><td class=\"num\">" + r[1] + "</td><td>" + r[2] + "</td><td>" + r[3] + "</td></tr>"; }).join("") + "</tbody>";
+    w3.appendChild(t3); box.appendChild(w3);
+    var bar = el("gd");
+    function btn(t, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = t; b.addEventListener("click", fn); bar.appendChild(b); }
+    btn("Exportar historial", function () {
+      var blob = new Blob([JSON.stringify({ led: LED, coef: COEFS })], { type: "application/json" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "historial_terminales.json"; a.click();
+    });
+    var imp = document.createElement("input"); imp.type = "file"; imp.accept = ".json"; imp.style.display = "none";
+    imp.addEventListener("change", function () {
+      var f = imp.files[0]; if (!f) return; var fr = new FileReader();
+      fr.onload = function () { try { var d = JSON.parse(fr.result), k2; for (k2 in d.led) { if (!LED[k2] || d.led[k2].est.length > LED[k2].est.length) LED[k2] = d.led[k2]; } for (k2 in d.coef) COEFS[k2] = d.coef[k2]; ledSave(); render(); } catch (e) { alert("El archivo no es un historial válido."); } };
+      fr.readAsText(f);
+    });
+    bar.appendChild(imp);
+    btn("Importar historial", function () { imp.click(); });
+    btn("Borrar historial", function () { if (confirm("¿Borrar todo el historial de este navegador?")) { LED = {}; COEFS = {}; ledSave(); render(); } });
+    box.appendChild(bar);
+    host.appendChild(box);
+  }
+
+  // ── Pestañas ──
+  (function () {
+    var ids = ["proy", "voy", "stats"];
+    function show(id) {
+      ids.forEach(function (i) { var on = i === id; document.getElementById("tab-" + i).hidden = !on; document.getElementById("tb-" + i).setAttribute("aria-selected", on ? "true" : "false"); });
+      try { sessionStorage.setItem("mpproy:tab", id); } catch (e) { }
+    }
+    ids.forEach(function (i, n) {
+      var b = document.getElementById("tb-" + i);
+      b.addEventListener("click", function () { show(i); });
+      b.addEventListener("keydown", function (ev) {
+        var d = ev.key === "ArrowRight" ? 1 : ev.key === "ArrowLeft" ? -1 : 0; if (!d) return;
+        var j = (n + d + ids.length) % ids.length; show(ids[j]); document.getElementById("tb-" + ids[j]).focus();
+      });
+    });
+    var s0 = null; try { s0 = sessionStorage.getItem("mpproy:tab"); } catch (e) { }
+    show(ids.indexOf(s0) >= 0 ? s0 : "proy");
+  })();
+
+  function setBusy(msg) { document.getElementById("srcmsg").textContent = msg || ""; }
+
+  // ── Feed ya existente de la guardia (Apps Script actual): se reconstruyen filas para reutilizar el mismo lector ──
+  function gridsFromApi(d) {
+    var rows = [];
+    function newRow() { var r = []; for (var i = 0; i < 32; i++) r.push(null); rows.push(r); return r; }
+    var t = d.turno || {};
+    newRow();
+    var r1 = newRow(); r1[22] = t.fecha || null;
+    (t.practicos || []).forEach(function (p) { var r = newRow(); r[0] = p.pos; r[2] = p.nombre; r[6] = p.tipo; r[7] = p.detalle; });
+    newRow();
+    function bloque(titulo, lista) {
+      var h = newRow(); h[0] = titulo;
+      (lista || []).forEach(function (b) {
+        var ra = newRow(), rb = newRow();
+        ra[1] = (b.practicos || [])[0] || null; ra[9] = b.buque;
+        rb[1] = (b.practicos || [])[1] || null;
+        var cols = [4, 7, 11, 16];
+        (b.datos || []).forEach(function (x, i) { if (cols[i] !== undefined) rb[cols[i]] = x; });
+      });
+    }
+    var tr = d.transitos || {};
+    bloque("EN VIAJE A ROSARIO", tr.aRosario);
+    bloque("EN VIAJE DE ROSARIO", tr.deRosario);
+    var ob = newRow(); ob[0] = "OBSERVACIONES";
+    var f = newRow(); f[20] = "FRANCOS";
+    (t.francos || []).forEach(function (x) { var r = newRow(); r[20] = x.nombre; });
+    var e = newRow(); e[20] = "ENFERMOS";
+    (t.enfermos || []).forEach(function (x) { var r = newRow(); r[20] = x.nombre; });
+    var out = { GUARDIA: rows, SUBIDAS: [], BAJADAS: [], CAMPANA: [] };
+    var map = { subida: "SUBIDAS", bajada: "BAJADAS", campana: "CAMPANA" };
+    (d.previstos || []).forEach(function (p) {
+      var r = []; for (var i = 0; i < 17; i++) r.push(null);
+      r[0] = p.marca; r[1] = p.agencia; r[2] = p.buque; r[3] = p.coef;
+      r[4] = p.fechaRecalada; r[5] = p.horaRecalada; r[6] = p.fechaConfirmado; r[7] = p.horaConfirmado;
+      r[8] = p.desde; r[9] = p.hasta; r[10] = p.observaciones;
+      if (map[p.tipo]) out[map[p.tipo]].push(r);
+    });
+    var vacio = !((tr.aRosario || []).length || (tr.deRosario || []).length);
+    return { grids: out, sinViajes: vacio };
+  }
+  var timer = null;
+  function loadLive() {
+    var url = document.getElementById("apiurl").value.trim();
+    var clave = document.getElementById("apiclave").value;
+    if (!url) { setBusy("Pegá la URL del script."); return; }
+    setBusy("Cargando…");
+    try { localStorage.setItem("mpproy:url", url); } catch (e) { }
+    try { sessionStorage.setItem("mp_clave", clave); } catch (e) { }
+    var full = url + (url.indexOf("?") < 0 ? "?" : "&") + "clave=" + encodeURIComponent(clave);
+    fetch(full, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (data) {
+      if (data.error) { setBusy("La planilla rechazó la clave."); return; }
+      if (!data.grids && !data.turno) { setBusy("Esa URL no devuelve datos de la guardia."); return; }
+      var d = data.actualizado ? new Date(data.actualizado) : new Date();
+      var pl = data.grids ? { grids: data.grids } : gridsFromApi(data);
+      applyData(pl, "live", Date.now(), p2(d.getHours()) + ":" + p2(d.getMinutes()));
+      if (pl.sinViajes) { AVISOS.unshift("La guardia web no está entregando los buques en viaje: faltan los prácticos que están navegando y la proyección queda corta. Con el Excel cargado sí aparecen."); render(); }
+      setBusy("");
+      if (timer) clearInterval(timer);
+      timer = setInterval(function () {
+        fetch(full, { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (dd) {
+          if (dd && (dd.grids || dd.turno)) {
+            var d2 = new Date(dd.actualizado), p3 = dd.grids ? { grids: dd.grids } : gridsFromApi(dd);
+            applyData(p3, "live", Date.now(), p2(d2.getHours()) + ":" + p2(d2.getMinutes()));
+            if (p3.sinViajes) { AVISOS.unshift("La guardia web no está entregando los buques en viaje: faltan los prácticos que están navegando y la proyección queda corta. Con el Excel cargado sí aparecen."); render(); }
+          }
+        }, function () { });
+      }, 300000);
+    }, function () {
+      setBusy("No se pudo conectar. Revisá la URL y tu conexión.");
+    });
+  }
+
+  // ── Excel local (sin Google): se lee en el navegador ──
+  function gridsFromWorkbook(wb) {
+    var out = {};
+    ["GUARDIA", "SUBIDAS", "BAJADAS", "CAMPANA"].forEach(function (name) {
+      var ws = wb.Sheets[name];
+      if (!ws || !ws["!ref"]) { out[name] = null; return; }
+      var rg = XLSX.utils.decode_range(ws["!ref"]);
+      var rows = Math.min(rg.e.r, 89), cols = Math.min(rg.e.c, 31), g = [], r, c;
+      for (r = 0; r <= rows; r++) {
+        var line = [];
+        for (c = 0; c <= cols; c++) {
+          var cl = ws[XLSX.utils.encode_cell({ r: r, c: c })];
+          var v = null;
+          if (cl && cl.v !== undefined && cl.v !== "") {
+            if (cl.t === "n" && cl.z && XLSX.SSF.is_date(cl.z)) {
+              var d = XLSX.SSF.parse_date_code(cl.v);
+              v = { __d: d.y + "-" + p2(d.m) + "-" + p2(d.d) + "T" + p2(d.H) + ":" + p2(d.M) + ":" + p2(d.S), t: cl.w || "" };
+              if (d.y < 1901) v.__d = "1899-12-30" + v.__d.slice(10);
+            } else if (cl.t === "n") { v = cl.v; }
+            else { v = String(cl.v); }
+          }
+          line.push(v);
+        }
+        g.push(line);
+      }
+      out[name] = g;
+    });
+    return out;
+  }
+  function loadPdf(file) {
+    if (typeof pdfjsLib === "undefined") { setBusy("No se pudo cargar el lector de PDF. Revisá la conexión y recargá."); return; }
+    setBusy("Leyendo " + file.name + "…");
+    try { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } catch (e) { }
+    var fr = new FileReader();
+    fr.onload = function () {
+      pdfjsLib.getDocument({ data: new Uint8Array(fr.result) }).promise.then(function (doc) {
+        var lines = [], chain = Promise.resolve(), n;
+        function page(i) {
+          return doc.getPage(i).then(function (pg) { return pg.getTextContent(); }).then(function (tc) {
+            var rows = [], dup = {};
+            tc.items.forEach(function (it) {
+              if (!it.str || !it.str.trim()) return;
+              var dl = dup[it.str] = dup[it.str] || [], dd, isDup = false;
+              for (dd = 0; dd < dl.length; dd++) if (Math.abs(dl[dd][0] - it.transform[4]) < 2.5 && Math.abs(dl[dd][1] - it.transform[5]) < 2.5) { isDup = true; break; }
+              if (isDup) return; // el sistema dibuja cada texto dos veces (casi superpuesto)
+              dl.push([it.transform[4], it.transform[5]]);
+              var y = it.transform[5], x = it.transform[4], row = null, k;
+              for (k = 0; k < rows.length; k++) if (Math.abs(rows[k].y - y) < 2.5) { row = rows[k]; break; }
+              if (!row) { row = { y: y, it: [] }; rows.push(row); }
+              row.it.push({ x: x, w: it.width, s: it.str });
+            });
+            rows.sort(function (a, b) { return b.y - a.y; });
+            rows.forEach(function (r) {
+              r.it.sort(function (a, b) { return a.x - b.x; });
+              var s = "", end = null;
+              r.it.forEach(function (t) { s += (end === null ? "" : (t.x - end > 5 ? "   " : (t.x - end > 1.5 ? " " : ""))) + t.s; end = t.x + t.w; });
+              lines.push(s);
+            });
+          });
+        }
+        for (n = 1; n <= doc.numPages; n++) (function (i) { chain = chain.then(function () { return page(i); }); })(n);
+        return chain.then(function () {
+          var res = mpAdapterPdf(lines, Date.now());
+          if (!res) { setBusy("El PDF no parece una guardia del sistema (no encuentro \"Turnos al día\")."); return; }
+          if (timer) { clearInterval(timer); timer = null; }
+          followNow = true;
+          store("lastpdf", { lines: lines, name: file.name, at: Date.now() });
+          applyData({ res: res }, "pdf", Date.now(), file.name);
+          setBusy("");
+        });
+      }).catch(function (e) { setBusy("No se pudo leer el PDF: " + (e && e.message ? e.message : "error")); });
+    };
+    fr.onerror = function () { setBusy("No se pudo abrir el archivo."); };
+    fr.readAsArrayBuffer(file);
+  }
+  function loadExcel(file) {
+    if (!file) return;
+    if (/\.pdf$/i.test(file.name)) { loadPdf(file); return; }
+    if (typeof XLSX === "undefined") { setBusy("No se pudo cargar el lector de Excel. Revisá la conexión y recargá."); return; }
+    setBusy("Leyendo " + file.name + "…");
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var wb = XLSX.read(fr.result, { type: "array", cellNF: true });
+        var grids = gridsFromWorkbook(wb);
+        if (!grids.GUARDIA) { setBusy("El archivo no tiene la hoja GUARDIA. ¿Es el Excel de la guardia?"); return; }
+        if (timer) { clearInterval(timer); timer = null; }
+        followNow = true;
+        applyData({ grids: grids }, "excel", Date.now(), file.name);
+        setBusy("");
+      } catch (e) { setBusy("No se pudo leer el archivo: " + (e && e.message ? e.message : "error")); }
+    };
+    fr.onerror = function () { setBusy("No se pudo abrir el archivo."); };
+    fr.readAsArrayBuffer(file);
+  }
+  // Las horas de los barcos "sin despachar" del PDF son las que cargó la agencia y casi nunca se actualizan.
+  // Las que mantienen los operadores están en el Excel (hojas SUBIDAS / BAJADAS / CAMPANA): se usan esas.
+  function mergeExcelHours(res, resX) {
+    if (!res || !resX) return res;
+    var off = (resX.T0 - res.T0) / H, cnt = 0;
+    res.ships.forEach(function (s) {
+      if (s.fixed) return;
+      var x = null;
+      resX.ships.forEach(function (q) { if (!x && q.n === s.n && q.dir === s.dir) x = q; });
+      if (!x) return;
+      var nt = null;
+      if (typeof x.t === "number") nt = x.t + off;
+      else if (typeof x.dayHint === "number") {
+        var hint = String((x.hint || "")).toUpperCase(), mm = /(\d{1,2})\s*(AM|PM)/.exec(hint), hh = /\bPM\b/.test(hint) ? 14 : (/\bAM\b/.test(hint) ? 10 : 12);
+        if (mm) hh = (+mm[1] % 12) + (mm[2] === "PM" ? 12 : 0);
+        nt = x.dayHint + off + hh;
+        var au = /(?:^|[^O]\s)AUT\.?\s+(\d{1,2})\/(\d{1,2})/.exec(" " + hint);
+        if (au) { var d0 = new Date(res.T0), ad = new Date(d0.getFullYear(), +au[2] - 1, +au[1], 0, 0, 0).getTime(); var an = (ad - res.T0) / H + hh; if (an > nt) nt = an; }
+      }
+      if (nt === null) return;
+      if (typeof x.t !== "number" && nt <= s.t) return; // fecha sin hora: solo se usa si posterga el barco
+      s.t = nt; s.call = nt - 5; s.deExcel = true; cnt++;
+    });
+    // Barcos que figuran solo en el Excel (p. ej. los de la hoja CAMPANA): se agregan
+    function lk(n) { return String(n).replace(/[^A-Z0-9]/g, "").split("").sort().join(""); }
+    var have = {};
+    res.ships.forEach(function (q) { have[lk(q.n)] = 1; });
+    var pdfTxt = lk((window.MP_PDFLINES || []).join(" ")), pdfWords = (window.MP_PDFLINES || []).join(" ").toUpperCase();
+    resX.ships.forEach(function (q) {
+      if (q.fixed || have[lk(q.n)] || pdfWords.indexOf(q.n) >= 0) return;
+      var c = {}, k; for (k in q) c[k] = q[k];
+      var nt = null;
+      if (typeof q.t === "number") nt = q.t + off;
+      else if (typeof q.dayHint === "number") nt = q.dayHint + off + 12;
+      if (nt === null) return;
+      c.t = nt; c.pending = false; c.deExcel = true; c.soloExcel = true; delete c.dayHint;
+      res.ships.push(c); cnt++;
+    });
+    res.nExcel = cnt;
+    return res;
+  }
+  // Cambios (permutas) entre colegas: en el Excel figuran como "MARTINEZ XNIRSCHL" / "NIRSCHL X MARTINEZ". El PDF no los trae.
+  function applySwaps(res, grids) {
+    if (!res || !grids || !grids.GUARDIA) return res;
+    var done = {}, nS = 0;
+    function find(tok) { var t = String(tok).replace(/[.]/g, "").trim().toUpperCase(), r = null; res.pilots.forEach(function (p) { var n = String(p.n).replace(/[.]/g, "").toUpperCase(); if (!r && (n === t || n.indexOf(t + " ") === 0 || t.indexOf(n) === 0)) r = p; }); return r; }
+    grids.GUARDIA.slice(0, 45).forEach(function (row) {
+      var c = String(row[2] == null ? "" : row[2]), m = /^(\S.*?)\s+X\s*(\S.*)$/.exec(c.trim().toUpperCase());
+      if (!m) return;
+      var a = find(m[1]), b = find(m[2]);
+      if (!a || !b || a === b) return;
+      var k = [a.n, b.n].sort().join("|");
+      if (done[k]) return;
+      done[k] = 1;
+      var kk = a.key; a.key = b.key; b.key = kk; nS++;
+    });
+    res.nSwaps = nS;
+    return res;
+  }
+  function loadDemo() {
+    if (timer) { clearInterval(timer); timer = null; }
+    followNow = true;
+    var anchor = new Date(2026, 9, 31, 13, 25).getTime();
+    (window.MP_PDFLINES || []).some(function (l) { var m = /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):\d{2} ([ap])m/i.exec(l); if (m && /Turnos al d/.test(l)) { m[4] = p2((+m[4] % 12) + (/p/i.test(m[6]) ? 12 : 0)); anchor = new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime(); DEMOMSG = "Guardia cargada: la del sistema de las " + m[4] + ":" + m[5] + " del " + m[1] + "/" + m[2] + "/" + m[3] + "."; return true; } return false; });
+    if (window.MP_PDFLINES && typeof mpAdapterPdf === "function") {
+      var rP = mpAdapterPdf(window.MP_PDFLINES, anchor), rX = null;
+      try { if (window.MP_FIXTURE && window.MP_FIXTURE.grids) rX = mpAdapter(window.MP_FIXTURE.grids, anchor); } catch (e) { rX = null; }
+      if (rX) { rP = applySwaps(mergeExcelHours(rP, rX), window.MP_FIXTURE.grids); if (rP.nSwaps) DEMOMSG += " Cambios de turno entre colegas (del Excel): " + rP.nSwaps + ".";  if (rP.nExcel) DEMOMSG += " Horas de los barcos: las del Excel de esa hora (" + rP.nExcel + " barcos); prácticos y despachos: los del PDF."; }
+      applyData({ res: rP }, "demo", anchor, "");
+    }
+    else applyData(window.MP_FIXTURE, "demo", new Date(2026, 9, 30, 7, 35).getTime(), "");
+    setBusy("");
+  }
+
+  // ── Excel NUEVO de la guardia, leído desde Drive con el lector común (assets/guardia-reader.js) ──
+  function b64Bytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  function dmy(iso) { var m = /^(\d{4})-(\d\d)-(\d\d)/.exec(iso || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : ""; }
+  function hm(iso) { var m = /T(\d\d:\d\d)/.exec(iso || ""); return m ? m[1] : ""; }
+  var ETQ = { "ZONA COMUN": "Z.C", "ESCOBAR": "ESC", "CAMPANA": "CPNA", "SAN NICOLAS": "S.N", "SAN LORENZO": "S.L", "ARROYO SECO": "AS" };
+  function etq(p) { if (!p) return null; var n = String(p.puertoTexto || "").toUpperCase(); return ETQ[n] || null; }
+  function tokViaje(p, fija) {
+    if (!p || !p.cuando) return null;
+    var h = hm(p.cuando); if (!h) return null;
+    var e = fija || etq(p); return e ? e + ": " + h : null;
+  }
+  function formaProyeccion(g) {
+    function tarjeta(v) {
+      var datos = [tokViaje(v.inicio, "I"), tokViaje(v.desembarco1), tokViaje(v.desembarco2)].filter(Boolean);
+      return { buque: v.buque, practicos: [v.practico1, v.practico2].filter(Boolean), datos: datos };
+    }
+    var fuera = {}; g.francos.fueraDeTurno.forEach(function (f) { fuera[f.practico.toUpperCase()] = 1; });
+    var turno = { fecha: dmy(g.guardia.fechaInicio), enfermos: g.francos.fueraDeTurno.map(function (f) { return { nombre: f.practico }; }),
+      practicos: g.turno.map(function (t) { var d = /^\d{4}-\d\d-(\d\d)T(\d\d:\d\d)/.exec(t.entrada || ""); return { pos: t.pos, nombre: t.practico, tipo: "E/T", detalle: d ? d[1] + " - " + d[2] + " (12)" : "" }; }),
+      francos: g.francos.enFranco.map(function (f) { return { nombre: f.practico }; }) };
+    var previstos = [];
+    [["subidas", "subida"], ["bajadas", "bajada"], ["campana", "campana"]].forEach(function (k) {
+      var p = g.programacion[k[0]]; if (!p) return;
+      p.buques.forEach(function (b) {
+        var rec = b.recalada || {}, eta = b.eta || {}, obs = [];
+        if (b.autorizado === "SI") obs.push("AUTORIZADO"); else if (b.autorizado === "NO") obs.push("NO AUT");
+        if (b.observaciones) obs.push(b.observaciones);
+        previstos.push({ tipo: k[1], marca: b.marca || "", agencia: b.agencia || "", buque: b.buque || "", coef: b.coef,
+          fechaRecalada: dmy(rec.fecha), horaRecalada: rec.hora || rec.franja || "", fechaConfirmado: dmy(eta.fecha), horaConfirmado: eta.hora || eta.franja || "",
+          desde: b.desde || "", hasta: b.hasta || "", observaciones: obs.join(" · ") });
+      });
+    });
+    return { turno: turno, previstos: previstos, transitos: { aRosario: g.viajes.aRosario.map(tarjeta), deRosario: g.viajes.deRosario.map(tarjeta) } };
+  }
+  function loadDrive() {
+    var url = window.GUARDIA_API_URL, clave = ""; try { clave = sessionStorage.getItem("mp_clave") || ""; } catch (e) { }
+    if (!url || !clave) return false;
+    setBusy("Leyendo la guardia desde Drive…");
+    function una() {
+      return fetch(url + (url.indexOf("?") < 0 ? "?" : "&") + "clave=" + encodeURIComponent(clave), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.error) { setBusy(/autorizado/i.test(d.error) ? "La clave no coincide con la del Apps Script. Entrá de nuevo desde la guardia." : d.error); return; }
+        return GuardiaReader.leerGuardia(ExcelJS, b64Bytes(d.xlsx), window.JSZip).then(function (g) {
+          var m = d.modificado ? new Date(d.modificado) : new Date();
+          window.__meta = { guardia: g.guardia, modificado: d.modificado || null, consultado: d.consultado || null, nombre: d.nombre || '' };
+          var pl = gridsFromApi(formaProyeccion(g));
+          applyData({ grids: pl.grids }, "live", Date.now(), p2(m.getHours()) + ":" + p2(m.getMinutes()));
+          if (g.avisos) g.avisos.filter(function (a) { return a.tipo === "fuera_de_turno_y_turno" || a.tipo === "franco_y_turno"; }).forEach(function (a) { AVISOS.unshift(a.mensaje); });
+          if (pl.sinViajes) AVISOS.unshift("La guardia no tiene buques en viaje cargados: la proyección puede quedar corta.");
+          render(); setBusy("");
+        });
+      });
+    }
+    una().catch(function (e) { setBusy("No pude leer desde Drive: " + (e && e.message ? e.message : e)); });
+    if (timer) clearInterval(timer);
+    timer = setInterval(function () { una().catch(function () { }); }, 300000);
+    return true;
+  }
+
+  statusEl = document.getElementById("status");
+  buildRef();
+  buildParams();
+  document.getElementById("btnlive").addEventListener("click", loadLive);
+  document.getElementById("btndemo").addEventListener("click", loadDemo);
+  var fin = document.getElementById("xlfile");
+  fin.addEventListener("change", function () { loadExcel(fin.files[0]); fin.value = ""; });
+  var dz = document.getElementById("drop");
+  ["dragenter", "dragover"].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add("on"); }); });
+  ["dragleave", "drop"].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove("on"); }); });
+  dz.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files.length) loadExcel(e.dataTransfer.files[0]); });
+  try {
+    document.getElementById("apiurl").value = window.PROY_API_URL || localStorage.getItem("mpproy:url") || GUARDIA_URL;
+    document.getElementById("apiclave").value = sessionStorage.getItem("mp_clave") || "";
+  } catch (e) { }
+  if (!loadDrive()) {
+    loadDemo();
+    setBusy("Son datos de ejemplo. Para ver la guardia real entrá desde la pantalla principal (usuario y contraseña) o cargá un Excel.");
+  }
+})();
+
+</script>
+
+</body></html>
