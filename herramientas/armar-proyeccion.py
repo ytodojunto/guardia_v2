@@ -105,9 +105,10 @@ hoy_js = r'''
     st.appendChild(ch)}
   function onTrip2(q){return q.base.concat(q.segs).some(function(s){return (s[2]==='nav'||s[2]==='asig')&&s[0]<=REF+1e-9&&REF<s[1]-1e-9})}
   var nNav=0,nLis=0;CALC.ps.forEach(function(q){if(onTrip2(q))nNav++;else if(q.hist.some(function(h){return h[0]<=REF+1e-9&&REF<h[1]-1e-9})||q.base.concat(q.segs).some(function(s){return s[2]==='pres'&&s[0]<=REF+1e-9&&REF<s[1]-1e-9}))nLis++});
-  var nFr=CALC.nFuera||0;
+  var FU=(window.__meta&&window.__meta.fuera)||[];
+  var nFr=Math.max(0,(CALC.nFuera||0)-FU.length);
   var nm=document.getElementById('nums');nm.textContent='';
-  [[nLis,'en lista'],[nNav,'navegando'],[nFr,'de franco']].forEach(function(x){var d=el('div');d.appendChild(el('b','',String(x[0])));d.appendChild(el('span','',x[1]));nm.appendChild(d)});
+  [[nLis,'en lista'],[nNav,'navegando'],[nFr,'de franco']].concat(FU.length?[[FU.length,'fuera de turno']]:[]).forEach(function(x){var d=el('div');d.appendChild(el('b','',String(x[0])));d.appendChild(el('span','',x[1]));nm.appendChild(d)});
   var tl=document.getElementById('tl');tl.textContent='';
   for(var dj=d0h;dj<d0h+4;dj++){
     var d1=dOf(24*dj),lbl=(dj===d0h?'Hoy · ':(dj===d0h+1?'Mañana · ':''))+DIASL[d1.getDay()]+' '+d1.getDate()+'/'+(d1.getMonth()+1);
@@ -130,7 +131,7 @@ hoy_js = r'''
   var okN=win.filter(function(r){return stOf(r)[0]==='ok'}).length,juN=win.filter(function(r){return stOf(r)[0]==='uno'}).length,faN=win.filter(function(r){return stOf(r)[0]==='falta'}).length;
   var dl=dOf(24*(d0h+3));
   var rsm=document.getElementById('resumen');rsm.textContent='';
-  var p1=el('p');p1.appendChild(el('b','','Prácticos: '));p1.appendChild(document.createTextNode(nLis+' en lista, '+nNav+' navegando, '+nFr+' de franco o licencia.'));rsm.appendChild(p1);
+  var p1=el('p');p1.appendChild(el('b','','Prácticos: '));p1.appendChild(document.createTextNode(nLis+' en lista, '+nNav+' navegando, '+nFr+' de franco'+(FU.length?', '+FU.length+' fuera de turno (enfermo o licencia): '+FU.map(function(f){return f.practico}).join(', '):'')+'.'));rsm.appendChild(p1);
   var p2_=el('p');p2_.appendChild(el('b','','Hasta el '+DIASL[dl.getDay()]+' '+dl.getDate()+'/'+(dl.getMonth()+1)+': '));p2_.appendChild(document.createTextNode(win.length+' servicios ('+su+' suben, '+ba+(ba===1?' baja':' bajan')+(win.length-su-ba?', '+(win.length-su-ba)+' movimientos':'')+') = '+despachos(win)+' despachos. Cubiertos '+okN+', justos '+juN+', sin cobertura '+faN+'.'));rsm.appendChild(p2_);
   rsm.appendChild(el('p','k','Cada práctico vuelve a estar libre a su hora de presentación más 6 h de descanso. Cada barco se llama 5 h antes de su salida, por orden de lista.'));
 '''
@@ -147,6 +148,7 @@ voy_js = r'''
   function p(n){return String(n).padStart(2,'0')}
   function iso(d){return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
   function head(t){
+    if(/fuera de turno/i.test(t))return['Fuera de turno','neu'];
     if(/franco/i.test(t))return['De franco','neu'];
     if(/embarcado/i.test(t))return['Embarcado','warn'];
     if(/llegando/i.test(t))return['Llegando del viaje','warn'];
@@ -159,7 +161,15 @@ voy_js = r'''
     ans.textContent='';
     if(!C||!window.__voyFn||!pr.value){ans.textContent='Esperando los datos de la guardia…';return}
     var d=new Date(fh.value);if(isNaN(d)){ans.textContent='Elegí una fecha y hora.';return}
+    var FU=(window.__meta&&window.__meta.fuera)||[],fx=FU.filter(function(f){return String(f.practico).toLowerCase()===pr.value.toLowerCase()})[0];
     var T=(d.getTime()-C.T0)/3600000,L=window.__voyFn(pr.value,T),A=L[0],B=L[1];
+    if(fx&&!A.length){
+      var m=/^\d{4}-(\d\d)-(\d\d)T(\d\d:\d\d)/.exec(fx.salida||'');
+      var hd0=document.createElement('span');hd0.className='hd neu';hd0.textContent='Fuera de turno';ans.appendChild(hd0);
+      var q0=document.createElement('p');q0.textContent='Figura fuera de turno (enfermo o licencia)'+(m?' desde el '+(+m[2])+'/'+(+m[1])+' '+m[3]:'')+'. No entra a la lista hasta que se informe su reingreso.';ans.appendChild(q0);
+      if(fx.observacion){var q1=document.createElement('p');q1.style.color='var(--mute)';q1.textContent=fx.observacion;ans.appendChild(q1)}
+      return;
+    }
     if(!A.length){ans.textContent='Sin datos para ese práctico.';return}
     var h=head(A[0]);
     var hd=document.createElement('span');hd.className='hd '+h[1];hd.textContent=h[0];ans.appendChild(hd);
@@ -173,7 +183,11 @@ voy_js = r'''
   }
   window.__armarVoy=function(CALC){
     C=CALC;var sel=pr.value;pr.textContent='';
-    CALC.ps.map(function(q){return q.n}).sort().forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;pr.appendChild(o)});
+    var FU=(window.__meta&&window.__meta.fuera)||[];
+    function tc(n){n=String(n).trim();return n.charAt(0).toUpperCase()+n.slice(1).toLowerCase()}
+    var nombres=CALC.ps.map(function(q){return q.n});
+    FU.forEach(function(f){var n=tc(f.practico);if(!nombres.some(function(x){return x.toLowerCase()===n.toLowerCase()}))nombres.push(n)});
+    nombres.sort().forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;pr.appendChild(o)});
     if(sel)pr.value=sel;
     var ref=new Date(CALC.T0+Math.round(CALC.REF*60)*60000);
     fh.min=iso(ref);var mx=new Date(ref.getTime()+4*864e5);fh.max=iso(mx);

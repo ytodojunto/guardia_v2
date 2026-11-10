@@ -2146,7 +2146,7 @@ function mpAdapterPdf(lines, anchorMs) {
         if (d.error) { setBusy(/autorizado/i.test(d.error) ? "La clave no coincide con la del Apps Script. Entrá de nuevo desde la guardia." : d.error); return; }
         return GuardiaReader.leerGuardia(ExcelJS, b64Bytes(d.xlsx), window.JSZip).then(function (g) {
           var m = d.modificado ? new Date(d.modificado) : new Date();
-          window.__meta = { guardia: g.guardia, modificado: d.modificado || null, consultado: d.consultado || null, nombre: d.nombre || '' };
+          window.__meta = { guardia: g.guardia, fuera: g.francos.fueraDeTurno || [], modificado: d.modificado || null, consultado: d.consultado || null, nombre: d.nombre || '' };
           var pl = gridsFromApi(formaProyeccion(g));
           applyData({ grids: pl.grids }, "live", Date.now(), p2(m.getHours()) + ":" + p2(m.getMinutes()));
           if (g.avisos) g.avisos.filter(function (a) { return a.tipo === "fuera_de_turno_y_turno" || a.tipo === "franco_y_turno"; }).forEach(function (a) { AVISOS.unshift(a.mensaje); });
