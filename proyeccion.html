@@ -1110,8 +1110,9 @@ function mpAdapterPdf(lines, anchorMs) {
     { k: "slCp", l: "Bajada San Lorenzo a Campana", v: 12, tag: "tuyo, de Helios" },
     { k: "glEsc", l: "Bajada Gral. Lagos a Escobar", v: 14, tag: "estimado" },
     { k: "glZc", l: "Bajada Gral. Lagos a Z.C.", v: 19, tag: "estimado" },
-    { k: "ros", l: "Subida: Z.C. a Rosario", v: 20, tag: "estimado, corregilo" },
-    { k: "ram", l: "Subida: Z.C. a Ramallo", v: 15, tag: "estimado, corregilo" },
+    { k: "slsn", l: "Bajada San Lorenzo a San Nicolás (1 práctico)", v: 5, tag: "tuyo" },
+    { k: "ros", l: "Subida: Z.C. a Rosario", v: 20, tag: "tuyo" },
+    { k: "ram", l: "Subida: Z.C. a Ramallo", v: 15, tag: "tuyo" },
     { k: "rosEsc", l: "Bajada Rosario a Escobar", v: 13, tag: "estimado, corregilo" },
     { k: "rosZc", l: "Bajada Rosario a Z.C.", v: 18, tag: "estimado, corregilo" },
     { k: "rosCp", l: "Bajada Rosario a Campana", v: 10, tag: "estimado, corregilo" },
@@ -1173,7 +1174,7 @@ function mpAdapterPdf(lines, anchorMs) {
       var vencida = false;
       if (typeof t === "number" && t < REF - 1e-9 && !s.fixed && REF - t <= 24) { t = REF + 1; vencida = true; }
       if (typeof t !== "number" || (t < REF - 1e-9 && !s.fixed)) return;
-      ships.push({ vencida: vencida, deExcel: !!s.deExcel, fixed: s.fixed || null, fixedAt: s.fixedAt,  id: s.id, n: s.n, dir: s.dir, route: s.route, t: t, call: vencida ? REF : t - 5, ext: s.ext, legs: s.route === "mv" ? [{ port: s.mv.to, h: Math.abs(s.mv.kmB - s.mv.kmA) / 1.852 / (s.mv.kmB > s.mv.kmA ? P.knS : P.knB) }] : (s.route === "cp_zc" && s.np === 2) ? [{ port: "ESC", h: P.cpzc - 1.5 }, { port: "ZC", h: P.cpzc }] : legsFor(s.route), np: s.np || 2, cal: s.cal || null, mv: s.mv });
+      ships.push({ vencida: vencida, deExcel: !!s.deExcel, fixed: s.fixed || null, fixedAt: s.fixedAt,  id: s.id, n: s.n, dir: s.dir, route: s.route, t: t, call: vencida ? REF : t - 5, ext: s.ext, legs: s.route === "mv" ? [{ port: s.mv.to, h: (s.mv.from === "SL" && s.mv.to === "SN") ? P.slsn : Math.abs(s.mv.kmB - s.mv.kmA) / 1.852 / (s.mv.kmB > s.mv.kmA ? P.knS : P.knB) }] : (s.route === "cp_zc" && s.np === 2) ? [{ port: "ESC", h: P.cpzc - 1.5 }, { port: "ZC", h: P.cpzc }] : legsFor(s.route), np: s.np || 2, cal: s.cal || null, mv: s.mv });
     });
     ships.sort(function (a, b) { return a.call - b.call; });
 
