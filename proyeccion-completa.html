@@ -683,6 +683,7 @@ function mpAdapter(grids, anchorMs) {
       if (/PALMIRA/.test(d) && /LORENZO|S\.?L\.?$/.test(h)) return "np_sl";
       if (/^(CPNA|CAMPANA)/.test(d) && /^(Z\.?C|ZONA)/.test(h)) return "cp_zc";
       if (/^(Z\.?C|ZONA)/.test(d) && /CPNA|CAMPANA/.test(h)) return "zc_cp";
+      if (/^(Z\.?C|ZONA)/.test(d) && /RAMALLO|RLLO/.test(h)) return "zc_ram";
       var A = pk(d), B = pk(h);
       if (A && B && A[1] !== B[1] && A[1] !== "ZC" && B[1] !== "ZC") { mvInfo = { from: A[1], to: B[1], kmA: A[2], kmB: B[2] }; return "mv"; }
       return null;
@@ -692,12 +693,18 @@ function mpAdapter(grids, anchorMs) {
       if (/LORENZO|S\.?L\.?$/.test(h)) return "zc_sl";
       if (/ARROYO|A\.? ?SECO/.test(h)) return "zc_as";
       if (/NICOLAS|S\.?N\.?$/.test(h)) return "zc_sn";
+      if (/ROSARIO/.test(h)) return "zc_ros";
+      if (/RAMALLO|RLLO/.test(h)) return "zc_ram";
       if (/CPNA|CAMPANA/.test(h)) return "zc_cp";
       return null;
     }
-    var org = /LORENZO|TIMBUES/.test(d) ? "sl" : (/LAGOS/.test(d) ? "gl" : null);
+    var org = /LORENZO|TIMBUES/.test(d) ? "sl" : (/LAGOS/.test(d) ? "gl" : (/ROSARIO/.test(d) ? "ros" : null));
     var dst = /CPNA|CAMPANA/.test(h) ? "cp" : (/Z\.?C|ZONA/.test(h) ? "zc" : null);
     if (org && dst && org + "_" + dst !== "gl_cp") return org + "_" + dst;
+    if (org && !dst) {   // bajada de tramo corto entre puertos del río (1 práctico): San Lorenzo a San Nicolás, a Gral. Lagos, etc.
+      var A2 = pk(d), B2 = pk(h);
+      if (A2 && B2 && A2[1] !== B2[1] && A2[1] !== "ZC" && B2[1] !== "ZC" && A2[1] !== "ESC" && B2[1] !== "ESC") { mvInfo = { from: A2[1], to: B2[1], kmA: A2[2], kmB: B2[2] }; return "mv"; }
+    }
     return null;
   }
   // Guardia Rosario: prácticos ya designados a un buque (nombre col U, "E/T" + día - hora, buque col AA)
@@ -872,6 +879,8 @@ function mpAdapterPdf(lines, anchorMs) {
       if (/ARROYO|A\. ?SECO/.test(h)) return "zc_as";
       if (/NICOLAS/.test(h)) return "zc_sn";
       if (/CAMPANA|CPNA/.test(h)) return "zc_cp";
+      if (/ROSARIO/.test(h)) return "zc_ros";
+      if (/RAMALLO|RLLO/.test(h)) return "zc_ram";
       return null;
     }
     if (tipo === "bajada") {
@@ -880,6 +889,10 @@ function mpAdapterPdf(lines, anchorMs) {
       if (zc(h) && /LAGOS/.test(d)) return "gl_zc";
       if (zc(h) && /ARROYO|A\. ?SECO/.test(d)) return "as_zc";
       if (/CAMPANA|CPNA/.test(h) && /LORENZO|TIMBUES/.test(d)) return "sl_cp";
+      if (zc(h) && /ROSARIO/.test(d)) return "ros_zc";
+      if (/CAMPANA|CPNA/.test(h) && /ROSARIO/.test(d)) return "ros_cp";
+      var A3 = pk(d), B3 = pk(h);   // tramo corto entre puertos del río (1 práctico)
+      if (A3 && B3 && A3[1] !== B3[1] && !zc(d) && !zc(h) && A3[1] !== "ESC" && B3[1] !== "ESC" && /LORENZO|TIMBUES|LAGOS/.test(d)) { mvInfo = { from: A3[1], to: B3[1], kmA: A3[2], kmB: B3[2] }; return "mv"; }
       return null;
     }
     // campana
@@ -887,6 +900,7 @@ function mpAdapterPdf(lines, anchorMs) {
     if (/PALMIRA/.test(d) && /GUAZU|PALMAS/.test(h)) return "np_lp";
     if (/CAMPANA|CPNA/.test(d) && zc(h)) return "cp_zc";
     if (zc(d) && /CAMPANA|CPNA/.test(h)) return "zc_cp";
+    if (zc(d) && /RAMALLO|RLLO/.test(h)) return "zc_ram";
     if (/CONST|VILLA/.test(d) && /ROSARIO/.test(h)) return "vc_ros";
     var A = pk(d), B = pk(h);
     if (A && B && A[1] !== B[1] && !zc(d) && !zc(h)) { mvInfo = { from: A[1], to: B[1], kmA: A[2], kmB: B[2] }; return "mv"; }
@@ -1024,6 +1038,11 @@ function mpAdapterPdf(lines, anchorMs) {
     { k: "slCp", l: "Bajada San Lorenzo a Campana", v: 12, tag: "tuyo, de Helios" },
     { k: "glEsc", l: "Bajada Gral. Lagos a Escobar", v: 14, tag: "estimado" },
     { k: "glZc", l: "Bajada Gral. Lagos a Z.C.", v: 19, tag: "estimado" },
+    { k: "ros", l: "Subida: Z.C. a Rosario", v: 20, tag: "estimado, corregilo" },
+    { k: "ram", l: "Subida: Z.C. a Ramallo", v: 15, tag: "estimado, corregilo" },
+    { k: "rosEsc", l: "Bajada Rosario a Escobar", v: 13, tag: "estimado, corregilo" },
+    { k: "rosZc", l: "Bajada Rosario a Z.C.", v: 18, tag: "estimado, corregilo" },
+    { k: "rosCp", l: "Bajada Rosario a Campana", v: 10, tag: "estimado, corregilo" },
     { k: "vcros", l: "Movimiento: Villa Const. a Rosario", v: 2.5, tag: "tuyo, reglamento" },
     { k: "asEsc", l: "Bajada: Arroyo Seco a Escobar", v: 12, tag: "estimado, corregilo" },
     { k: "asZc", l: "Bajada: Arroyo Seco a Z.C.", v: 17, tag: "estimado, corregilo" },
@@ -1056,6 +1075,10 @@ function mpAdapterPdf(lines, anchorMs) {
     if (route === "sl_cp") return [{ port: "CPNA", h: P.slCp }, { port: "CPNA", h: P.slCp }];
     if (route === "gl_zc") return [{ port: "ESC", h: P.glEsc }, { port: "ZC", h: P.glZc }];
     if (route === "gl_cp") return [{ port: "CPNA", h: P.glEsc }, { port: "CPNA", h: P.glEsc }];
+    if (route === "ros_zc") return [{ port: "ESC", h: P.rosEsc }, { port: "ZC", h: P.rosZc }];
+    if (route === "ros_cp") return [{ port: "CPNA", h: P.rosCp }, { port: "CPNA", h: P.rosCp }];
+    if (route === "zc_ros") return [{ port: "ROS", h: P.ros }, { port: "ROS", h: P.ros }];
+    if (route === "zc_ram") return [{ port: "RAM", h: P.ram }, { port: "RAM", h: P.ram }];
     if (route === "vc_ros") return [{ port: "ROS", h: P.vcros }];
     if (route === "ros_sl") return [{ port: "SL", h: P.rossl }];
     if (route === "np_sl") return [{ port: "SL", h: P.npsl }, { port: "SL", h: P.npsl }];
