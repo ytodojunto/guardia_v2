@@ -559,7 +559,18 @@
         var fN = raw(wsN.getCell(rn, 1)), aN = raw(wsN.getCell(rn, 2)), tN = raw(wsN.getCell(rn, 3));
         if (fN == null && aN == null && tN == null) continue;
         if (fN == null && aN == null && ultimaNov) { ultimaNov.texto += '\n' + limpio(tN); continue; }
-        ultimaNov = { fecha: esFecha(fN) ? ymd(fN) : (fN == null ? null : limpio(fN)), autor: aN == null ? null : limpio(aN), texto: tN == null ? '' : limpio(tN), fila: rn };
+        // D = PRIORIDAD (URGENTE / NORMAL) y E = VIGENTE HASTA (fecha y hora): opcionales; sin E es una novedad de registro, no aviso.
+        var pN = raw(wsN.getCell(rn, 4)), hN = raw(wsN.getCell(rn, 5)), hastaN = null;
+        if (esFecha(hN)) {
+          var solo = hN.getUTCHours() === 0 && hN.getUTCMinutes() === 0;
+          hastaN = ymd(hN) + 'T' + (solo ? '23:59' : pad(hN.getUTCHours()) + ':' + pad(hN.getUTCMinutes()));
+        } else if (hN != null) {
+          var mh = String(hN).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+          if (mh) { var yh = +mh[3]; if (yh < 100) yh += 2000; hastaN = yh + '-' + pad(+mh[2]) + '-' + pad(+mh[1]) + 'T' + (mh[4] ? pad(+mh[4]) + ':' + mh[5] : '23:59'); }
+          else aviso('aviso', 'NOVEDADES OPERATIVAS', wsN.getCell(rn, 5).address, 'vigencia_invalida', 'No entiendo "VIGENTE HASTA": "' + hN + '" (usá fecha y hora, ej. 14/11/2026 18:00).');
+        }
+        var prioN = pN != null && norm(pN).indexOf('URG') === 0 ? 'urgente' : 'normal';
+        ultimaNov = { fecha: esFecha(fN) ? ymd(fN) : (fN == null ? null : limpio(fN)), autor: aN == null ? null : limpio(aN), texto: tN == null ? '' : limpio(tN), fila: rn, prioridad: prioN, hasta: hastaN };
         out.novedades.push(ultimaNov);
       }
     }

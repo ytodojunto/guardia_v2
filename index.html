@@ -40,6 +40,11 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;background:#e
 .hdr-info{flex:1}
 .hdr-coord{color:rgba(255,255,255,0.9);font-size:11px;font-weight:500}
 .hdr-op{color:rgba(255,255,255,0.6);font-size:10px}
+.aviso-item{border-radius:8px;padding:6px 10px;margin:0 0 6px;font-size:12px;line-height:1.35}
+.aviso-urg{background:#c62828;color:#fff;border:1px solid #ff8a80}
+.aviso-norm{background:#fff3cd;color:#5c4400;border:1px solid #f0c36d}
+.aviso-txt{font-weight:600;white-space:pre-line}
+.aviso-pie{font-size:10px;opacity:.85;margin-top:2px}
 .hdr-meta{display:flex;align-items:center;justify-content:space-between}
 .hdr-fecha{color:rgba(255,255,255,0.7);font-size:10px}
 .hdr-despachos{background:rgba(255,255,255,0.12);border-radius:6px;padding:2px 8px;color:#fff;font-size:10px}
@@ -306,6 +311,7 @@ html[data-theme="dark"] .buque-obs{color:#c3c9d4;border-top-color:#333c4d}
     <div class="hdr-despachos">Despachos en el mes: <strong style="font-size:10px">En proceso</strong></div>
     <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Cambiar tema">🌙</div>
   </div>
+  <div id="avisoActual" style="display:none"></div>
   <div class="search-global">
     <span>🔍</span>
     <input type="text" id="globalSearch" placeholder="Buscar práctico, buque, agencia..." oninput="globalSearch(this.value)">

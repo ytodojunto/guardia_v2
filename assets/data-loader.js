@@ -123,14 +123,14 @@
     };
 
     var novedades = (g.novedades || []).slice().sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); })
-      .map(function (n) { return { autor: n.autor || 'Guardia', texto: n.texto, fecha: /^\d{4}-/.test(n.fecha || '') ? dmy(n.fecha) : (n.fecha || '') }; });
+      .map(function (n) { return { autor: n.autor || 'Guardia', texto: n.texto, fecha: /^\d{4}-/.test(n.fecha || '') ? dmy(n.fecha) : (n.fecha || ''), prioridad: n.prioridad || 'normal', hasta: n.hasta || null }; });
 
     var R = g.remises;
     var remises = R ? { turno1: R.turno1, turno2: R.turno2 } : null;
 
     var G = g.guardia;
     return { turno: turno, previstos: previstos, transitos: transitos, novedades: novedades, remises: remises,
-             avisos: g.avisos.filter(function (a) { return a.nivel === 'error' || a.tipo === 'fuera_de_turno_y_turno' || a.tipo === 'franco_y_turno' || a.tipo === 'sin_servicio' || a.tipo === 'turno_viaje_distinto' || a.tipo === 'viaje_sin_despacho'; }).map(function (a) { return a.hoja + (a.celda ? ' ' + a.celda : '') + ': ' + a.mensaje; }),
+             avisos: g.avisos.filter(function (a) { return a.nivel === 'error' || a.tipo === 'fuera_de_turno_y_turno' || a.tipo === 'franco_y_turno' || a.tipo === 'sin_servicio' || a.tipo === 'turno_viaje_distinto' || a.tipo === 'viaje_sin_despacho' || a.tipo === 'vigencia_invalida'; }).map(function (a) { return a.hoja + (a.celda ? ' ' + a.celda : '') + ': ' + a.mensaje; }),
              encabezado: 'Guardia ' + dmh(G.fechaInicio + 'T' + (G.horaInicio || '')) + ' → ' + dmh(G.fechaFin + 'T' + (G.horaFin || '')) + (meta ? ' · planilla guardada ' + meta : '') + ' · leída ' + (function (d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); })(new Date()) + (window.GUARDIA_VERSION ? ' · ' + window.GUARDIA_VERSION : '') };
   }
 
@@ -154,6 +154,7 @@
       renderTurno(data.turno);
       renderPrevistos(data.previstos);
       renderNovedades(data.novedades);
+      renderAvisoActual(data.novedades);
       renderRemises(data.remises);
       renderBuques(data.transitos);
       renderGuardiaRosarioTurno(data.transitos.guardiaRosario);
@@ -331,6 +332,22 @@
   }
 
   // ── NOVEDADES ──────────────────────────────────────────────────
+  // Aviso del momento: novedades con VIGENTE HASTA todavía no vencido, bajo el encabezado (urgentes primero, en rojo).
+  function renderAvisoActual(lista) {
+    var cont = document.getElementById('avisoActual');
+    if (!cont) return;
+    var ahora = new Date(), pad2 = function (n) { return ('0' + n).slice(-2); };
+    var ahoraIso = ahora.getFullYear() + '-' + pad2(ahora.getMonth() + 1) + '-' + pad2(ahora.getDate()) + 'T' + pad2(ahora.getHours()) + ':' + pad2(ahora.getMinutes());
+    var vig = (lista || []).filter(function (n) { return n.hasta && n.hasta >= ahoraIso; })
+      .sort(function (a, b) { return (a.prioridad === 'urgente' ? 0 : 1) - (b.prioridad === 'urgente' ? 0 : 1) || a.hasta.localeCompare(b.hasta); });
+    cont.innerHTML = vig.map(function (n) {
+      return '<div class="aviso-item ' + (n.prioridad === 'urgente' ? 'aviso-urg' : 'aviso-norm') + '">' +
+        '<div class="aviso-txt">' + (n.prioridad === 'urgente' ? '🚨 ' : '📢 ') + esc(n.texto) + '</div>' +
+        '<div class="aviso-pie">' + esc(n.autor || 'Guardia') + ' · vigente hasta ' + esc(dmh(n.hasta)) + '</div></div>';
+    }).join('');
+    cont.style.display = vig.length ? 'block' : 'none';
+  }
+
   var novedadesData = [];
   function renderNovedades(lista) {
     novedadesData = lista || [];
@@ -353,6 +370,8 @@
     cont.innerHTML = lista.map(function (n, i) {
       return '<div class="obs-item" data-orden="' + i + '">' +
         '<span class="obs-tag tag-azul">📋 ' + esc(n.autor || 'Guardia') + '</span>' +
+        (n.prioridad === 'urgente' ? '<span class="obs-tag tag-rojo">URGENTE</span>' : '') +
+        (n.hasta ? '<span class="obs-tag tag-azul">hasta ' + esc(dmh(n.hasta)) + '</span>' : '') +
         '<div class="obs-texto">' + esc(n.texto) + '</div>' +
         '<div class="obs-fecha">' + esc(n.fecha) + '</div></div>';
     }).join('') || '<div class="empty">Sin novedades</div>';

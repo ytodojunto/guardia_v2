@@ -181,3 +181,8 @@ Si MULTIPAR no cubre un barco y se lo da a otra empresa, esa empresa en algún m
 - Hay formatos heredados donde una marca (`*`, `X`) quedó pegada al nombre o al buque. Normalizar antes de comparar.
 - El título "CAMPANA" no garantiza que el buque vaya a Campana (ver sección 1).
 - Un nombre que no está en el catálogo no es un error: es cobertura (sección 6).
+
+## NOVEDADES OPERATIVAS: avisos del momento (v2.6)
+
+Columnas: A FECHA, B INFORMO, C NOVEDADES, **D PRIORIDAD** (Urgente o Normal) y **E VIGENTE HASTA** (fecha y hora, ej. 14/11/2026 18:00).
+Si E tiene fecha y hora y todavía no venció, la página muestra la novedad en un cuadro bajo el encabezado (urgentes en rojo, primero). Al vencer desaparece sola de ahí y queda en la pestaña Novedades. Si E está vacía es una novedad de registro. Si E solo tiene fecha, vale hasta las 23:59.
