@@ -2173,7 +2173,7 @@ function mpAdapterPdf(lines, anchorMs) {
     if (!url || !clave) return false;
     setBusy("Leyendo la guardia desde Drive…");
     function una() {
-      return fetch(url + (url.indexOf("?") < 0 ? "?" : "&") + "clave=" + encodeURIComponent(clave), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+      return window.guardiaPedir(clave).then(function (d) {
         if (d.error) { setBusy(/autorizado/i.test(d.error) ? "La clave no coincide con la del Apps Script. Entrá de nuevo desde la guardia." : d.error); return; }
         return GuardiaReader.leerGuardia(ExcelJS, b64Bytes(d.xlsx), window.JSZip).then(function (g) {
           var m = d.modificado ? new Date(d.modificado) : new Date();

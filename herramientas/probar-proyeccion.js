@@ -2,8 +2,8 @@
 const {JSDOM}=require('jsdom'),fs=require('fs'),path=require('path');
 const R=path.join(__dirname,'..'); const buf=fs.readFileSync(process.argv[2]);
 let html=fs.readFileSync(R+'/proyeccion.html','utf8');
-html=html.replace('<script src="assets/guardia-reader.js"></script>','<script>'+fs.readFileSync(R+'/assets/guardia-reader.js','utf8')+'</script>')
-         .replace('<script src="assets/config.js"></script>','<script>window.GUARDIA_API_URL="https://script.example/exec";</script>')
+html=html.replace(/<script src="assets\/guardia-reader.js[^"]*"><\/script>/,()=>'<script>'+fs.readFileSync(R+'/assets/guardia-reader.js','utf8')+'</script>')
+         .replace(/<script src="assets\/config.js[^"]*"><\/script>/,()=>'<script>'+fs.readFileSync(R+'/assets/config.js','utf8')+'</script>')
          .replace(/<script src="https[^"]+"><\/script>/g,'');
 const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://x.github.io/guardia_v2/proyeccion.html',
   beforeParse(w){ w.ExcelJS=require('exceljs'); w.JSZip=require('jszip'); w.sessionStorage.setItem('mp_clave','x');

@@ -148,8 +148,7 @@
     if (!url) { mostrarErrorBanner('Falta configurar la conexión con Drive.'); return; }
     var clave = sessionStorage.getItem('mp_clave') || '';
     try {
-      var resp = await fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'clave=' + encodeURIComponent(clave), { cache: 'no-store' });
-      var d = await resp.json();
+      var d = await window.guardiaPedir(clave);
       if (d.error) {
         console.error('Backend:', d.error);
         mostrarErrorBanner(/autorizado/i.test(d.error) ? 'No se pudo autenticar con Drive. Revisá la clave y recargá.' : d.error);
