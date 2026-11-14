@@ -168,7 +168,8 @@
       renderBuques(data.transitos);
       renderGuardiaRosarioTurno(data.transitos.guardiaRosario);
       var fechaEl = document.querySelector('.hdr-fecha');
-      if (fechaEl) fechaEl.textContent = '📅 ' + data.encabezado;
+      var infoNotas = Array.isArray(d.notas) ? ' · ' + d.notas.length + ' notas leídas' : ' · script sin lectura de notas (falta publicar la versión nueva)';
+      if (fechaEl) fechaEl.textContent = '📅 ' + data.encabezado + infoNotas;
       limpiarSkeletons();
       if (data.avisos.length) mostrarErrorBanner('Revisar planilla: ' + data.avisos.join(' · '));
       else { var banner = document.getElementById('loadingBanner'); if (banner) banner.classList.add('oculto'); }
