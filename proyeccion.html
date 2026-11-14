@@ -814,10 +814,15 @@ function mpAdapter(grids, anchorMs) {
       var t = null;
       var hh = timeOf(hT);
       if (dT && hh !== null) t = absOf(dT.d, hh);
+      var estFr = false;
+      if (t === null && dT) {   // sin hora, solo "AM" / "PM" / "NOCHE": se estima 10:00 / 14:00 / 21:00 (queda marcado como estimado)
+        var frT = up(str(hT)), mfr = /^(AM|PM|NOCHE|MA.ANA|TARDE)\b/.exec(frT);
+        if (mfr) { t = absOf(dT.d, mfr[1] === "AM" || mfr[1].indexOf("MA") === 0 ? 10 : (mfr[1] === "NOCHE" ? 21 : 14)); estFr = true; }
+      }
       if (tipo === "campana" && ships.some(function (q) { return q.n === up(buque); })) continue;
       if (tipo !== "subida" && movTxt.indexOf(" " + up(buque)) >= 0 && /MOVIM/.test(movTxt)) continue;
       var hint = [tipo === "subida" ? str(cF) : str(cH), obs].filter(Boolean).join(" · ");
-      var s = { id: tipo + ":" + up(buque) + ":" + up(desde), n: up(buque), dir: (tipo === "subida" || esMov) ? "S" : "B", np: 1, cal: null, route: routeOf(tipo, desde, hasta), mv: mvInfo, coef: coef, t: t, desde: desde, hasta: hasta, obs: obs, hint: hint };
+      var s = { estFranja: estFr, id: tipo + ":" + up(buque) + ":" + up(desde), n: up(buque), dir: (tipo === "subida" || esMov) ? "S" : "B", np: 1, cal: null, route: routeOf(tipo, desde, hasta), mv: mvInfo, coef: coef, t: t, desde: desde, hasta: hasta, obs: obs, hint: hint };
       var refDate = dT || cE || cG;
       if (t === null) {
         // sin hora: solo se ofrece cargarla si el buque cae dentro del horizonte
@@ -848,6 +853,8 @@ function mpAdapter(grids, anchorMs) {
       ships.push(s);
     }
   });
+  var estF = ships.filter(function (q) { return q.estFranja; }).map(function (q) { return q.n; });
+  if (estF.length) avisos.push("Hora estimada por franja (la planilla solo dice AM, PM o Noche: se usa 10:00, 14:00 o 21:00): " + estF.join(", ") + ".");
   var outCampana = [];
   (grids.CAMPANA || []).forEach(function (row, i) {
     var b = str(cell(grids.CAMPANA, i, 2));
