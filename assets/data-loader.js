@@ -63,6 +63,11 @@
           (g.viajes[k] || []).forEach(function (v) { if (v.fila === n.fila) { v.observaciones = (v.observaciones ? v.observaciones + ' · ' : '') + '📝 ' + txt; hit = true; } });
         });
       }
+      if (h === 'FRANCOS') {
+        ['enFranco', 'fueraDeTurno'].forEach(function (k) {
+          (g.francos[k] || []).forEach(function (f) { if (f.fila === n.fila) { f.nota = (f.nota ? f.nota + ' · ' : '') + txt; hit = true; } });
+        });
+      }
       if (!hit) (g.novedades = g.novedades || []).push({ fecha: '', autor: 'Nota ' + n.hoja + ' ' + n.celda, texto: txt });
     });
   }
@@ -88,10 +93,10 @@
       }),
       francos: g.francos.enFranco.map(function (f, i) {
         return { nro: i + 1, nombre: f.practico, cambio: false, fechaSalida: dm(f.salida), horaSalida: hh(f.salida),
-                 fechaIngreso: dm(f.ingreso), horaIngreso: hh(f.ingreso), obs: f.observacion };
+                 fechaIngreso: dm(f.ingreso), horaIngreso: hh(f.ingreso), obs: f.observacion, nota: f.nota || '' };
       }),
       enfermos: [],
-      observaciones: g.francos.fueraDeTurno.map(function (f) { return f.practico + ' (fuera de turno)' + (f.salida ? ' desde ' + dmh(f.salida) : '') + (f.observacion ? ' — ' + f.observacion : ''); })
+      observaciones: g.francos.fueraDeTurno.map(function (f) { return f.practico + ' (fuera de turno)' + (f.salida ? ' desde ' + dmh(f.salida) : '') + (f.observacion ? ' — ' + f.observacion : '') + (f.nota ? ' · 📝 ' + f.nota : ''); })
         .concat(g.francos.licencias || []),
       coordinador: g.guardia.coordinador, operador: g.guardia.operador, determinantes: [],
       telefonos: (g.telefonos || []).concat((g.enlaces || []).map(function (e) { return { puerto: '🔗', telefono: (e.descripcion ? e.descripcion + ' — ' : '') + e.url }; }))
@@ -193,7 +198,8 @@
         '<div class="franco-nombre">' + esc(f.nombre) + '</div><span class="badge b-naranja">FRANCO</span></div>' +
         '<div class="franco-fechas"><span>Salida: ' + esc(f.fechaSalida) + ' – ' + esc(f.horaSalida) + '</span>' +
         (f.fechaIngreso ? '<span>Regresa: ' + esc(f.fechaIngreso) + ' – ' + esc(f.horaIngreso) + '</span>' : '') +
-        (f.obs && f.obs.toUpperCase() !== 'FRANCO' ? '<span>' + esc(f.obs) + '</span>' : '') + '</div></div>';
+        (f.obs && f.obs.toUpperCase() !== 'FRANCO' ? '<span>' + esc(f.obs) + '</span>' : '') + '</div>' +
+        (f.nota ? '<div class="franco-fechas"><span>📝 ' + esc(f.nota) + '</span></div>' : '') + '</div>';
     }).join('') || '<div class="empty">Sin francos cargados</div>';
 
     if (cardVarios) {
