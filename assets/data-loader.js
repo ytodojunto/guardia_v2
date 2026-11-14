@@ -68,7 +68,11 @@
           (g.francos[k] || []).forEach(function (f) { if (f.fila === n.fila) { f.nota = (f.nota ? f.nota + ' · ' : '') + txt; hit = true; } });
         });
       }
-      if (!hit) (g.novedades = g.novedades || []).push({ fecha: '', autor: 'Nota ' + n.hoja + ' ' + n.celda, texto: txt });
+      ['subidas', 'bajadas', 'campana'].forEach(function (k) {
+        var pr = g.programacion && g.programacion[k]; if (!pr) return;
+        pr.buques.forEach(function (b) { if (String(b.hoja || '').toUpperCase() === h && b.fila === n.fila) { b.observaciones = (b.observaciones ? b.observaciones + ' · ' : '') + '📝 ' + txt; hit = true; } });
+      });
+      if (!hit) (g.novedades = g.novedades || []).push({ fecha: '', autor: '📝 Nota en ' + n.hoja + ' ' + n.celda, texto: txt });
     });
   }
 
