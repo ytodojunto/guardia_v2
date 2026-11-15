@@ -186,3 +186,12 @@ Si MULTIPAR no cubre un barco y se lo da a otra empresa, esa empresa en algún m
 
 Columnas: A FECHA, B INFORMO, C NOVEDADES, **D PRIORIDAD** (Urgente o Normal) y **E VIGENTE HASTA** (fecha y hora, ej. 14/11/2026 18:00).
 Si E tiene fecha y hora y todavía no venció, la página muestra la novedad en un cuadro bajo el encabezado (urgentes en rojo, primero). Al vencer desaparece sola de ahí y queda en la pestaña Novedades. Si E está vacía es una novedad de registro. Si E solo tiene fecha, vale hasta las 23:59.
+
+## Embarque del 2º práctico en el camino (v2.12, planilla v5i)
+
+En los bloques de viajes de TURNO hay una columna opcional **EMBARQUE PRACTICO 2** (puerto | FECHA | HORA), a la derecha de OBSERVACIONES.
+- Vacía: los dos prácticos salen juntos desde PUERTO E INICIO (como siempre).
+- Completa: el práctico 2 sube en ese puerto. DESEMBARCO 1 corresponde al práctico 1 y DESEMBARCO 2 al práctico 2.
+- Posta: el 1 baja y el 2 sube en el mismo puerto y hora (DESEMBARCO 1 y EMBARQUE iguales).
+- Con dos prácticos, sin embarque y con DESEMBARCO 2 vacío, se entiende que bajan los dos en DESEMBARCO 1.
+- Avisos: embarque sin práctico 2, o embarque sin DESEMBARCO 2.

@@ -340,6 +340,7 @@
         var b = bloque(id); if (!b) return;
         var h = encabezado(b, ['SERVICIO', 'BUQUE', 'PRACTICO 1', 'PRACTICO 2', 'PUERTO E INICIO', 'DESEMBARCO 1', 'DESEMBARCO 2']);
         if (!h) return;
+        var kEmb = Object.keys(h.f).filter(function (k) { return k.indexOf('EMBARQUE') === 0; })[0] || null;
         // Dos formatos: todo en un texto ("SL 01/09:50") o en tres celdas (puerto | FECHA | HORA).
         function leerPunto(r2, f) {
           var s1 = norm(raw(wsT.getCell(h.fila, f.col + 1)) || ''), s2 = norm(raw(wsT.getCell(h.fila, f.col + 2)) || '');
@@ -385,6 +386,8 @@
             inicio: leerPunto(r2, h.f['PUERTO E INICIO']),
             desembarco1: leerPunto(r2, h.f['DESEMBARCO 1']),
             desembarco2: leerPunto(r2, h.f['DESEMBARCO 2']),
+            // Embarque del 2º práctico en el camino (columna opcional "EMBARQUE PRACTICO 2" + FECHA + HORA)
+            embarque2: kEmb ? leerPunto(r2, h.f[kEmb]) : null,
             observaciones: h.f['OBSERVACIONES'] ? texto(leer(r2, h.f['OBSERVACIONES'])) : null,
             colores: {
               buque: colorDe(r2, h.f['BUQUE']), practico1: colorDe(r2, h.f['PRACTICO 1']),
@@ -392,6 +395,10 @@
             },
             ejemplo: !!(servicio && /^99\d{3}$/.test(servicio)), fila: r2
           };
+          // Dos prácticos, sin embarque en el camino y sin DESEMBARCO 2: bajan los dos en DESEMBARCO 1 (se carga una sola vez)
+          reg.mismoDestino = !!(p1 && p2 && !reg.embarque2 && !reg.desembarco2 && reg.desembarco1);
+          if (reg.embarque2 && !p2) aviso('aviso', 'TURNO', 'fila ' + r2, 'embarque_sin_practico2', 'Hay embarque de práctico 2 pero no hay práctico 2 cargado (buque ' + (bq.v || servicio) + ').');
+          if (reg.embarque2 && !reg.desembarco2) aviso('aviso', 'TURNO', 'fila ' + r2, 'embarque_sin_desembarco2', 'Sube un 2º práctico en el camino pero falta DESEMBARCO 2 (buque ' + (bq.v || servicio) + ').');
           destino.push(reg);
           if (servicio) {
             out.servicios[servicio] = out.servicios[servicio] || { viajes: [], programacion: [] };

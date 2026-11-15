@@ -46,7 +46,7 @@
     return etq + ': ' + (p.puertoTexto || p.raw || '?') + (p.cuando ? ' ' + dmh(p.cuando) : '');
   }
   function tarjetaDeViaje(v) {
-    var datos = [puntoTxt('Inicio', v.inicio), puntoTxt('Desembarco 1', v.desembarco1), puntoTxt('Desembarco 2', v.desembarco2)].filter(Boolean);
+    var datos = [puntoTxt('Inicio', v.inicio), puntoTxt('Embarca el 2º', v.embarque2), puntoTxt(v.mismoDestino ? 'Desembarcan los dos' : 'Desembarco 1', v.desembarco1), puntoTxt('Desembarco 2', v.desembarco2)].filter(Boolean);
     return { buque: (v.servicio ? v.servicio + ' · ' : '') + (v.buque || '(sin nombre)'), fecha: '', canal: v.canal || '',
              calado: v.calado != null ? String(v.calado).replace('.', ',') + ' m' : '',
              practicos: [v.practico1, v.practico2].filter(Boolean), datos: datos, observaciones: v.observaciones || '', ejemplo: v.ejemplo };
