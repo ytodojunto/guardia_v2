@@ -167,7 +167,7 @@
       renderBuques(data.transitos);
       renderGuardiaRosarioTurno(data.transitos.guardiaRosario);
       var fechaEl = document.querySelector('.hdr-fecha');
-      var infoNotas = Array.isArray(d.notas) ? ' · ' + d.notas.length + ' notas leídas' : ' · script sin lectura de notas (falta publicar la versión nueva)';
+      var infoNotas = Array.isArray(d.notas) ? ' · ' + d.notas.length + ' notas leídas' + (d.notasError ? ' (' + d.notasError + ')' : '') : ' · script sin lectura de notas (falta publicar la versión nueva)';
       if (fechaEl) fechaEl.textContent = '📅 ' + data.encabezado + infoNotas;
       limpiarSkeletons();
       if (data.avisos.length) mostrarErrorBanner('Revisar planilla: ' + data.avisos.join(' · '));
@@ -309,9 +309,25 @@
     return partefecha + partehora;
   }
 
+  // Hora para ordenar: número HH:MM, o AM / PM / Noche → 10:00 / 14:00 / 21:00
+  function horaOrden(h) {
+    var t = String(h || '').toUpperCase();
+    if (/(\d{1,2}):(\d{2})/.test(t)) return t;
+    if (/NOCHE/.test(t)) return '21:00';
+    if (/PM|TARDE/.test(t)) return '14:00';
+    if (/AM|MA.ANA/.test(t)) return '10:00';
+    return '';
+  }
+  // Salida del buque: la fecha/hora de Z.C. // ETD (o Confirmado) si está cargada; si no, la recalada
+  function claveSalida(b) {
+    if (b.fechaConfirmado) return claveOrdenFecha(b.fechaConfirmado, horaOrden(b.horaConfirmado));
+    return claveOrdenFecha(b.fechaRecalada, horaOrden(b.horaRecalada));
+  }
+
   function renderPrevistos(lista) {
     var cont = document.getElementById('listaPrevistos');
     if (!cont || !lista) return;
+    lista = lista.slice().sort(function (a, b) { return claveSalida(a).localeCompare(claveSalida(b)); });
     cont.innerHTML = lista.map(function (b) {
       var obs = b.observaciones || '';
       var estado = 'sin';
@@ -322,7 +338,7 @@
       // significa que la agencia haya autorizado el despacho. Solo el texto explícito
       // ("AUTORIZADO" / "NO AUT") define el estado; si no dice nada, queda "sin confirmar".
       var tipoFiltro = b.tipo === 'campana' ? 'movimiento' : b.tipo;
-      var dataHora = claveOrdenFecha(b.fechaRecalada, b.horaRecalada);
+      var dataHora = claveSalida(b);
       var icon = b.tipo === 'subida' ? '⬆️' : (b.tipo === 'bajada' ? '⬇️' : '🔄');
       var marcaBadge = '';
       if (b.marca === 'X') marcaBadge = '<span class="badge b-verde">✔ Despachado</span>';

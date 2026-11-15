@@ -50,12 +50,15 @@ function doGet(e) {
     } else {
       blob = archivo.getBlob();
     }
-    var notas = [];
+    var notas = [], notasError = '';
     if (archivo.getMimeType() === TIPO_SHEET) {
-      try { notas = leerNotas(id); } catch (e2) { notas = []; }
+      try { notas = leerNotas(id); } catch (e2) { notas = []; notasError = 'error al leer notas: ' + e2.message; }
+    } else {
+      notasError = 'el archivo no es un Google Sheet (' + archivo.getMimeType() + '), no se pueden leer notas';
     }
     return salida({
       notas: notas,
+      notasError: notasError,
       nombre: archivo.getName(),
       modificado: archivo.getLastUpdated().toISOString(),
       consultado: new Date().toISOString(),

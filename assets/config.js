@@ -22,4 +22,4 @@ window.guardiaPedir = async function (clave) {
 };
 
 // Versión visible en la página (se muestra en el login, el encabezado y la Proyección). Subirla en cada cambio que se publique.
-window.GUARDIA_VERSION = "guardia_v2.10";
+window.GUARDIA_VERSION = "guardia_v2.11";
