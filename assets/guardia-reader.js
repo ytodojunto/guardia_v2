@@ -393,7 +393,10 @@
               buque: colorDe(r2, h.f['BUQUE']), practico1: colorDe(r2, h.f['PRACTICO 1']),
               practico2: colorDe(r2, h.f['PRACTICO 2']), calado: h.f['CALADO'] ? colorDe(r2, h.f['CALADO']) : null
             },
-            ejemplo: !!(servicio && /^99\d{3}$/.test(servicio)), fila: r2
+            ejemplo: !!(servicio && /^99\d{3}$/.test(servicio)), fila: r2,
+            // columnas que ocupa cada campo (para saber a qué dato corresponde una nota de celda)
+            columnas: ['BUQUE', 'PRACTICO 1', 'PRACTICO 2', 'CALADO', 'CANAL', 'PUERTO E INICIO', 'DESEMBARCO 1', 'DESEMBARCO 2', 'OBSERVACIONES'].concat(kEmb ? [kEmb] : [])
+              .reduce(function (m, k) { if (h.f[k]) m[k === kEmb ? 'EMBARQUE' : k] = [h.f[k].col, /INICIO|DESEMBARCO/.test(k) || k === kEmb ? h.f[k].col + 2 : h.f[k].fin]; return m; }, {})
           };
           // Dos prácticos, sin embarque en el camino y sin DESEMBARCO 2: bajan los dos en DESEMBARCO 1 (se carga una sola vez)
           reg.mismoDestino = !!(p1 && p2 && !reg.embarque2 && !reg.desembarco2 && reg.desembarco1);

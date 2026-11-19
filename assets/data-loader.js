@@ -52,6 +52,20 @@
              practicos: [v.practico1, v.practico2].filter(Boolean), datos: datos, observaciones: v.observaciones || '', ejemplo: v.ejemplo };
   }
 
+  // A qué dato del viaje pertenece una nota, según la columna de su celda (A1 → número de columna)
+  function etiquetaNota(v, celda) {
+    var m = /^([A-Z]+)/.exec(String(celda || '')); if (!m || !v.columnas) return '';
+    var col = 0; m[1].split('').forEach(function (ch) { col = col * 26 + ch.charCodeAt(0) - 64; });
+    var campo = null;
+    Object.keys(v.columnas).forEach(function (k) { var r = v.columnas[k]; if (col >= r[0] && col <= r[1]) campo = k; });
+    var nom = { 'BUQUE': 'Buque', 'CALADO': 'Calado', 'CANAL': 'Canal', 'PUERTO E INICIO': 'Inicio', 'EMBARQUE': 'Embarque del 2º', 'OBSERVACIONES': 'Observaciones' };
+    if (campo === 'PRACTICO 1') return (v.practico1 || 'Práctico 1') + ': ';
+    if (campo === 'PRACTICO 2') return (v.practico2 || 'Práctico 2') + ': ';
+    if (campo === 'DESEMBARCO 1') return 'Desembarco' + (v.practico1 ? ' de ' + v.practico1 : ' 1') + ': ';
+    if (campo === 'DESEMBARCO 2') return 'Desembarco' + (v.practico2 ? ' de ' + v.practico2 : ' 2') + ': ';
+    return campo && nom[campo] ? nom[campo] + ': ' : '';
+  }
+
   // Notas de celda (las trae el Apps Script: [{hoja, celda, fila, texto}]). Se pegan al práctico / buque de esa fila.
   function aplicarNotas(g, notas) {
     (notas || []).forEach(function (n) {
@@ -60,7 +74,10 @@
       if (h === 'TURNO') {
         g.turno.forEach(function (t) { if (t.fila === n.fila) { t.nota = (t.nota ? t.nota + ' · ' : '') + txt; hit = true; } });
         Object.keys(g.viajes || {}).forEach(function (k) {
-          (g.viajes[k] || []).forEach(function (v) { if (v.fila === n.fila) { v.observaciones = (v.observaciones ? v.observaciones + ' · ' : '') + '📝 ' + txt; hit = true; } });
+          (g.viajes[k] || []).forEach(function (v) {
+            if (v.fila !== n.fila) return;
+            v.observaciones = (v.observaciones ? v.observaciones + ' · ' : '') + '📝 ' + etiquetaNota(v, n.celda) + txt; hit = true;
+          });
         });
       }
       if (h === 'FRANCOS') {
