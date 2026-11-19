@@ -76,7 +76,8 @@
     }
     if (typeof v === 'string') {
       var s = norm(v);
-      if (s === 'AM' || s === 'PM') return { hora: null, franja: s };
+      if (s === 'AM' || s === 'PM' || s === 'NOCHE') return { hora: null, franja: s };
+      if (/^FOND(EADO)?\b/.test(s)) return { hora: null, franja: 'FOND' };
       var m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
       if (m && +m[1] < 24 && +m[2] < 60) return { hora: pad(+m[1]) + ':' + pad(+m[2]), franja: null };
     }
@@ -107,7 +108,7 @@
     BL: ['BL', 'BRAZOLARGO'], GUAZU: ['GUAZU', 'TERMINALGUAZU', 'DELGUAZU'], DD: ['DD', 'DELTADOCK'],
     PPER: ['PPER', 'PUNTAPEREIRA', 'PUNTAPEREIRA(UY)', 'PUNTAPEREIRAUY'], K238: ['K238', 'KM238PA', 'KM238'],
     IBI: ['IBI', 'IBICUY'], MAZ: ['MAZ', 'MAZARUCA'], GLAG: ['GLAG', 'GENERALLAGOS'], VGG: ['VGG'],
-    SM: ['SM', 'SANMARTIN'], DIAM: ['DIAM', 'DIAMANTE'], SF: ['SF', 'SANTAFE'], PNA: ['PNA', 'PARANA'], ATU: ['ATU', 'ATUCHA']
+    SM: ['SM', 'SANMARTIN'], DIAM: ['DIAM', 'DIAMANTE'], SF: ['SF', 'SANTAFE'], PNA: ['PNA', 'PARANA'], ATU: ['ATU', 'ATUCHA'], ALV: ['ALV', 'PUNTAALVEAR', 'ALVEAR']
   };
   var ALIAS_A_CODIGO = {};
   Object.keys(PUERTOS_ALIAS).forEach(function (k) {
@@ -428,7 +429,9 @@
         if (seccion === 'licencias') { if (typeof a1 === 'string' && ta1.indexOf('LISTADO') !== 0) out.francos.licencias.push(a1); continue; }
         if (!hdr) continue;
         var pr = raw(wsF.getCell(rf, 3)); if (pr == null) continue;
-        var nombreF = limpio(pr);
+        var nombreF = limpio(pr), cambioCon = null;
+        var mxf = /^(.+?)\s+X\s+(.+)$/i.exec(nombreF);   // "MOCHI X BAYONES": cambio de franco; el práctico es el primero
+        if (mxf) { nombreF = limpio(mxf[1]); cambioCon = limpio(mxf[2]); }
         var d1 = aFecha(raw(wsF.getCell(rf, 4))), h1 = aHora(raw(wsF.getCell(rf, 5)));
         var d2 = aFecha(raw(wsF.getCell(rf, 6))), h2 = aHora(raw(wsF.getCell(rf, 7)));
         var obsF = raw(wsF.getCell(rf, 8));
@@ -439,7 +442,7 @@
           practico: nombreF,
           salida: d1 ? d1 + (h1 && h1.hora ? 'T' + h1.hora : '') : null,
           ingreso: d2 ? d2 + (h2 && h2.hora ? 'T' + h2.hora : '') : null,
-          observacion: obsF == null ? null : limpio(obsF), fila: rf
+          observacion: [obsF == null ? null : limpio(obsF), cambioCon ? 'cambio con ' + cambioCon : null].filter(Boolean).join(' · ') || null, fila: rf
         });
       }
       // cruces útiles

@@ -2163,7 +2163,7 @@ function mpAdapterPdf(lines, anchorMs) {
         if (b.observaciones) obs.push(b.observaciones);
         previstos.push({ tipo: k[1], marca: b.marca || "", agencia: b.agencia || "", buque: b.buque || "", coef: b.coef,
           fechaRecalada: dmy(rec.fecha), horaRecalada: rec.hora || rec.franja || "", fechaConfirmado: dmy(eta.fecha), horaConfirmado: eta.hora || eta.franja || "",
-          desde: b.desde || "", hasta: b.hasta || "", observaciones: obs.join(" · ") });
+          desde: String(b.desde || "").replace(/PUNTA ALVEAR|\bALVEAR\b/i, "ROSARIO"), hasta: String(b.hasta || "").replace(/PUNTA ALVEAR|\bALVEAR\b/i, "ROSARIO"), observaciones: obs.join(" · ") });
       });
     });
     return { turno: turno, previstos: previstos, transitos: { aRosario: g.viajes.aRosario.map(tarjeta), deRosario: g.viajes.deRosario.map(tarjeta) } };
